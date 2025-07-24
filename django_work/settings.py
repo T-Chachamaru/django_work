@@ -123,6 +123,19 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# SMS
+# 腾讯云短信的appid
+TENCENT_SMS_APP_ID = 0000000
+# 腾讯云短信的appkey
+TENCENT_SMS_APP_KEY = ""
+# 腾讯云短信的签名内容
+TENCENT_SMS_APP_SIGN = ""
+# 腾讯云短信的模板ID
+TENCENT_SMS_APP_TEMPLATE = {
+    'register': 548760,
+    'login': 548762,
+}
+
 try:
     from .local_settings import *
 except ImportError:

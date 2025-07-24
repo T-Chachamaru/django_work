@@ -17,6 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from app.views import send_sms, register
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('send/sms/', send_sms),
+    path('register/',register),
 ]
