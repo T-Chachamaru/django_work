@@ -19,7 +19,7 @@
 <body>
 <div class="account">
     <h1 style="text-align: center">注册</h1>
-    <form>
+    <form action="/register/" method="post">
         {% for field in form %}
             {% if field.name == 'code' %}
                 <div class="form-group">
