@@ -1,0 +1,92 @@
+{% extends 'app/layout/basic.html' %}
+{% load static %}
+{% block title %}注册{% endblock %}
+{% block css %}
+    <link rel="stylesheet" href="{% static 'app/css/account.css' %}">
+    <style>
+        .error-msg {
+            color: red;
+            font-size: 12px;
+            margin-top: 5px;
+            position: absolute;
+        }
+    </style>
+{% endblock %}
+{% block content %}
+    <div class="account">
+        <div class="title">注册</div>
+        <form action="/register/" method="post">
+            {% for field in form %}
+                {% if field.name == 'code' %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        <div class="clearfix">
+                            <div class="col-md-6" style="padding-left: 0">{{ field }}</div>
+                            <div class="col-md-6">
+                                <input id="getcode" type="button" class="btn btn-default" value="点击获取验证码">
+                            </div>
+                        </div>
+                        <span class="error-msg"></span>
+                    </div>
+                {% else %}
+                    <div class="form-group">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        <span class="error-msg"></span>
+                    </div>
+                {% endif %}
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">注册</button>
+        </form>
+    </div>
+{% endblock %}
+{% block js %}
+    <script>
+        $(document).ready(function () {
+            var $getCodeBtn = $('#getcode');
+            function startCountdown() {
+                var countdown = 60;
+                $getCodeBtn.prop('disabled', true); // 禁用按钮
+                var timer = setInterval(function () {
+                    countdown--;
+                    $getCodeBtn.val(countdown + '秒后重试');
+                    if (countdown <= 0) {
+                        clearInterval(timer);
+                        $getCodeBtn.prop('disabled', false); // 恢复按钮
+                        $getCodeBtn.val('点击获取验证码');
+                    }
+                }, 1000);
+            }
+
+            $getCodeBtn.click(function () {
+                // 清空所有错误信息
+                $('.error-msg').empty();
+                // 获取手机号码输入框的值
+                var mobilePhone = $('#id_mobile_phone').val().trim();
+                $.ajax({
+                    url: '{% url 'send_sms' %}',
+                    type: 'GET',
+                    data: { mobile_phone: mobilePhone, tpl: 'register' },
+                    dataType: 'json',
+                    success: function (data) {
+                        console.log('AJAX response:', data); // 调试返回数据
+                        if (data.status) {
+                            startCountdown(); // 启动倒计时
+                        } else {
+                            // 处理错误信息
+                            $.each(data.error, function (key, value) {
+                                // 确保找到正确的 error-msg 元素
+                                $("#id_" + key).siblings('.error-msg').text(value[0]);
+                            });
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('AJAX error:', error); // 调试错误
+                        // 显示通用错误信息到验证码字段的 error-msg
+                        $('#id_code').siblings('.error-msg').text('请求失败，请稍后重试');
+                    }
+                });
+            });
+        });
+    </script>
+{% endblock %}

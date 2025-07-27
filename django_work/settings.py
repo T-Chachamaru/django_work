@@ -136,6 +136,22 @@ TENCENT_SMS_APP_TEMPLATE = {
     'login': 548762,
 }
 
+# redis 配置
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://YOU_REDIS_IP:PORT',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            "CONNECTION_POOL_KWARGS": {
+                "max_connections": 1000,
+                "encoding": "utf-8",
+            },
+            "PASSWORD": "YOU_REDIS_PASSWORD"
+        }
+    }
+}
+
 try:
     from .local_settings import *
 except ImportError:
