@@ -1,10 +1,8 @@
 .account {
     width: 400px;
-    margin-top: 30px;
-    margin-left: auto;
-    margin-right: auto;
+    margin: 30px auto;
     border: 1px solid #f0f0f0;
-    padding: 10px 30px 30px 30px;
+    padding: 20px 30px 30px;
     -webkit-box-shadow: 5px 10px 10px rgba(0, 0, 0, .05);
     box-shadow: 5px 10px 10px rgba(0, 0, 0, .05);
 }
