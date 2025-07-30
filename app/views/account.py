@@ -1,8 +1,7 @@
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
-from django.views import View
 
-from app.forms.account import RegisterForm, SendSmsForm, LoginForm
+from app.forms.account import RegisterForm, SendSmsForm, LoginSmsForm, LoginForm
 from app import models
 
 
@@ -47,18 +46,68 @@ def send_sms(request):
 def login_sms(request):
     """短信验证码登录"""
     if request.method == 'GET':
-        form = LoginForm()
+        form = LoginSmsForm()
         return render(request, 'app/login_sms.html', {'form': form})
 
-    form = LoginForm(data=request.POST)
+    form = LoginSmsForm(data=request.POST)
     if form.is_valid():
         # 表单验证成功后，cleaned_data中已包含查询到的用户对象
         user_object = form.cleaned_data['mobile_phone']
 
-        # 在Session中记录用户登录状态
         request.session['user_id'] = user_object.id
-        request.session.set_expiry(60 * 60 * 24 * 14)  # 设置session两周内有效
+        request.session.set_expiry(60 * 60 * 24 * 14)
 
         return JsonResponse({'status': True, 'data': '/index/'})
 
     return JsonResponse({'status': False, 'error': form.errors})
+
+def login(request):
+    """处理邮箱和密码登录"""
+    if request.method == 'GET':
+        form = LoginForm(request=request)
+        return render(request, 'app/login.html', {'form': form})
+
+    form = LoginForm(request=request, data=request.POST)
+    if form.is_valid():
+        # 表单验证已在 LoginForm 的 clean 方法中完成
+        # 现在可以直接从 cleaned_data 中获取用户对象
+        user_object = form.cleaned_data['user_object']
+
+        request.session['user_id'] = user_object.id
+        request.session.set_expiry(60 * 60 * 24 * 14)  # 设置 session 两周内有效
+
+        return redirect('index')
+
+    return render(request, 'app/login.html', {'form': form})
+
+
+def image_code(request):
+    """
+    生成图片验证码并返回。
+
+    调用工具函数生成图片和验证码字符串，
+    将验证码字符串存入 session，然后将图片以二进制流的形式返回。
+    """
+    from io import BytesIO
+    from utils.image_code import generate_verification_code
+
+    # 1. 调用工具函数生成图片对象和验证码字符串
+    image_object, code = generate_verification_code()
+
+    # 2. 将验证码字符串写入到当前用户的 session 中（以便后续验证）
+    request.session['image_code'] = code
+    request.session.set_expiry(60)  # 可选：设置验证码60秒后过期
+
+    # 3. 将图片对象写入内存流
+    stream = BytesIO()
+    image_object.save(stream, 'png')
+
+    # 4. 将内存中的图片数据作为 HTTP 响应返回
+    return HttpResponse(stream.getvalue(), content_type='image/png')
+
+
+def logout(request):
+    """处理用户登出请求"""
+    # 清空 session，移除所有已登录状态
+    request.session.flush()
+    return redirect('index')

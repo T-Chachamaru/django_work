@@ -3,7 +3,8 @@ import random
 from django import forms
 from django.conf import settings
 from django.core.validators import RegexValidator
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import make_password, check_password
+from django.db.models import Q
 from django_redis import get_redis_connection
 
 from app import models
@@ -146,7 +147,7 @@ class SendSmsForm(forms.Form):
         return mobile_phone
 
 
-class LoginForm(BootStrapForm, forms.Form):
+class LoginSmsForm(BootStrapForm, forms.Form):
     """短信登录表单"""
     mobile_phone = forms.CharField(
         label='手机号',
@@ -186,3 +187,57 @@ class LoginForm(BootStrapForm, forms.Form):
             raise forms.ValidationError("验证码错误")
 
         return code
+
+
+class LoginForm(BootStrapForm, forms.Form):
+    """邮箱或手机号密码登录表单"""
+    username = forms.CharField(label='邮箱或手机号')
+    password = forms.CharField(label='密码', widget=forms.PasswordInput(render_value=True))
+    code = forms.CharField(label='图片验证码')
+
+    def __init__(self, request, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.request = request
+
+    def clean_code(self):
+        """校验图片验证码"""
+        code = self.cleaned_data.get('code')
+
+        session_code = self.request.session.get('image_code')
+        if not session_code:
+            raise forms.ValidationError("验证码已过期，请刷新页面")
+
+        if code.strip().upper() != session_code.upper():
+            raise forms.ValidationError("验证码输入错误")
+
+        return code
+
+    def clean(self):
+        """
+        全局校验，处理用户身份和密码验证。
+        """
+        cleaned_data = super().clean()
+        # 获取未被处理过的原始数据
+        username = cleaned_data.get('username')
+        password = cleaned_data.get('password')  # 这是用户输入的明文密码
+
+        # 如果前面的字段验证未通过，则无需继续
+        if not all([username, password]):
+            return cleaned_data
+
+        # 使用 Q 对象实现 OR 查询，支持用户名或手机号登录
+        user_object = models.UserInfo.objects.filter(
+            Q(email=username) | Q(mobile_phone=username)
+        ).first()
+
+        if not user_object:
+            raise forms.ValidationError("用户名或密码错误")
+
+        # 使用 Django 内置的 check_password 函数比较明文密码和数据库中的哈希密码
+        if not check_password(password, user_object.password):
+            raise forms.ValidationError("用户名或密码错误")
+
+        # 将查询到的用户对象存入 cleaned_data，方便视图函数使用
+        cleaned_data['user_object'] = user_object
+
+        return cleaned_data
