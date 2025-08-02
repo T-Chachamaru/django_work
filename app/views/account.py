@@ -1,3 +1,6 @@
+import datetime
+import uuid
+
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
 
@@ -15,7 +18,18 @@ def register(request):
     form = RegisterForm(data=request.POST)
     if form.is_valid():
         # ModelForm验证通过，直接保存即可自动创建用户（密码已在Form中加密）
-        form.save()
+        instance = form.save()
+        # 创建交易记录
+        policy_object = models.PricePolicy.objects.filter(category=1, title='个人免费版').first()
+        models.Transaction.objects.create(
+            status=2,
+            order=str(uuid.uuid4()),
+            user=instance,
+            price_policy=policy_object,
+            count=0,
+            price=0,
+            start_datetime=datetime.datetime.now(),
+        )
         return JsonResponse({'status': True, 'data': '/login/sms/'})
 
     return JsonResponse({'status': False, 'error': form.errors})

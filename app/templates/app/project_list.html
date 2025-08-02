@@ -1,0 +1,76 @@
+{% extends 'app/layout/manage.html' %}
+
+{% block css %}
+<style>
+    .project {
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid project">
+    <!-- 新建项目按钮，点击会触发下面的模态框 -->
+    <a class="btn btn-primary" data-toggle="modal" data-target="#addModal">
+        <i class="fas fa-plus" aria-hidden="true"></i> 新建项目
+    </a>
+</div>
+
+<!-- 新建项目的模态框 (Modal) -->
+<div class="modal fade" id="addModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">新建项目</h4>
+            </div>
+            <div class="modal-body">
+                <!-- 新建项目的表单 -->
+                <form id="addForm" novalidate>
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="form-group">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            <span class="error-msg"></span>
+                        </div>
+                    {% endfor %}
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">取 消</button>
+                <button id="btnSubmit" type="button" class="btn btn-primary">确 认</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+    $(function() {
+        // 为模态框中的“确认”按钮绑定点击事件
+        $('#btnSubmit').click(function() {
+            $('#addForm .error-msg').empty();
+            $.ajax({
+                url: "{% url 'project_list' %}",
+                type: "POST",
+                data: $('#addForm').serialize(),
+                dataType: "json",
+                success: function(response) {
+                    if (response.status) {
+                        location.reload();
+                    } else {
+                        $.each(response.error, function(key, messages) {
+                            $(`#id_${key}`).closest('.form-group').find('.error-msg').text(messages[0]);
+                        });
+                    }
+                },
+                error: function() {
+                    alert("请求失败，请稍后重试。");
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

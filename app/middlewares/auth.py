@@ -1,31 +1,68 @@
+import datetime
+
+from django.shortcuts import redirect
 from django.utils.deprecation import MiddlewareMixin
+from django.conf import settings
 
 from app import models
 
 
+class Tracer(object):
+    """
+    一个用于追踪和存储当前请求相关信息的对象。
+
+    它会作为一个方便的容器，被附加到每个请求上，
+    用于存放当前登录的用户及其有效的价格策略。
+    """
+
+    def __init__(self):
+        self.user = None
+        self.price_policy = None
+
+
 class AuthMiddleware(MiddlewareMixin):
     """
-    用户认证中间件
+    认证与价格策略处理中间件。
 
-    处理每个到达服务器的请求，检查 session 中是否存在 user_id。
-    如果存在，则从数据库中获取对应的用户对象，并将其附加到 request 对象上，
-    以便在项目的任何视图和模板中都能轻松访问当前登录的用户信息。
+    1.  为每个请求初始化一个 Tracer 对象。
+    2.  检查用户登录状态。
+    3.  对于已登录用户，动态获取其当前有效的价格策略。
+    4.  实现访问控制，对未登录用户强制重定向到登录页面（白名单URL除外）。
     """
 
     def process_request(self, request):
-        """
-        在请求到达视图前执行。
+        """在每个请求到达视图前执行。"""
 
-        将查询到的用户对象（或 None）赋值给 request.tracer。
-        """
-        # 1. 从 session 中获取 user_id，如果不存在则默认为 0
+        # 1. 初始化 Tracer 对象并附加到 request
+        request.tracer = Tracer()
         user_id = request.session.get('user_id', 0)
-
-        # 2. 根据 user_id 查询用户对象。
-        #    .first() 在找不到对象时会返回 None，避免了抛出异常。
         user_object = models.UserInfo.objects.filter(id=user_id).first()
+        request.tracer.user = user_object
 
-        # 3. 将用户对象（或 None）赋值给 request.tracer，供后续使用。
-        #    这是一种自定义约定，使得在视图函数中可以通过 request.tracer
-        #    来获取当前登录的用户，如果未登录则为 None。
-        request.tracer = user_object
+        # 2. 访问白名单中的URL，无需登录即可访问
+        if request.path_info in settings.WHITE_REGEX_URL_LIST:
+            return None
+
+        # 3. 对非白名单URL，检查用户是否已登录
+        if not user_object:
+            return redirect('login')
+
+        # 4. 获取用户当前有效的价格策略
+        # 查找用户最近一个已付款的订单
+        latest_transaction = models.Transaction.objects.filter(user=user_object, status=2).order_by('-id').first()
+
+        # 检查付费套餐是否已过期
+        current_datetime = datetime.datetime.now()
+        if latest_transaction and latest_transaction.end_datetime and latest_transaction.end_datetime < current_datetime:
+            # 如果已过期，则为其分配免费版套餐
+            free_policy = models.PricePolicy.objects.filter(category=1).first()
+            request.tracer.price_policy = free_policy
+        elif latest_transaction:
+            # 如果未过期，则使用该订单对应的套餐
+            request.tracer.price_policy = latest_transaction.price_policy
+        else:
+            # 如果从未付过费，同样分配免费版套餐
+            free_policy = models.PricePolicy.objects.filter(category=1).first()
+            request.tracer.price_policy = free_policy
+
+        return None

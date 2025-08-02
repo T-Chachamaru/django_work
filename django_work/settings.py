@@ -153,6 +153,16 @@ CACHES = {
     }
 }
 
+# 中间件白名单
+WHITE_REGEX_URL_LIST = [
+    "/register/",
+    "/login/",
+    "/send/sms/",
+    "/image/code/",
+    "/login/sms/",
+    "/index/",
+]
+
 try:
     from .local_settings import *
 except ImportError:

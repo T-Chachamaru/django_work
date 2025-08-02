@@ -1,0 +1,89 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+
+    <!-- 基础 CSS -->
+    <link rel="stylesheet" href="{% static 'app/plugin/bootstrap-3.4.1/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'app/plugin/fontawesome-5.15.4/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'app/css/manage.css' %}">
+
+    <!-- 自定义 CSS 块 -->
+    {% block css %}{% endblock %}
+
+    <style>
+        .navbar {
+            border-radius: 0;
+        }
+        /* 错误信息样式 */
+        .error-msg {
+            color: red;
+            font-size: 12px;
+            position: absolute; /* 相对于 form-group 定位 */
+            bottom: -5px;      /* 调整位置，避免与输入框重叠 */
+        }
+        .form-group {
+            position: relative; /* 为错误信息提供定位上下文 */
+            padding-bottom: 10px; /* 为错误信息预留空间 */
+        }
+    </style>
+</head>
+<body>
+
+<!-- 导航栏 -->
+<nav class="navbar navbar-inverse">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="{% url 'project_list' %}">Tracer</a>
+        </div>
+
+        <!-- 导航链接 -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav">
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">项目 <span class="caret"></span></a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#"></a></li>
+                    </ul>
+                </li>
+            </ul>
+
+            <ul class="nav navbar-nav navbar-right">
+                <li><a href="#">工作台</a></li>
+                <li><a href="#">日历</a></li>
+                <li><a href="#"><i class="fas fa-lightbulb"></i></a></li>
+                <li><a href="#"><i class="fas fa-bookmark"></i></a></li>
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">{{ request.tracer.user.username }} <span class="caret"></span></a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{% url 'index' %}">官  网</a></li>
+                        <li role="separator" class="divider"></li>
+                        <li><a href="{% url 'logout' %}">退出</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- 主内容区域块 -->
+{% block content %}{% endblock %}
+
+<!-- 基础 JavaScript -->
+<script src="{% static 'app/plugin/jquery-3.7.1.js' %}"></script>
+<script src="{% static 'app/plugin/bootstrap-3.4.1/js/bootstrap.min.js' %}"></script>
+
+<!-- 自定义 JavaScript 块 -->
+{% block js %}{% endblock %}
+
+</body>
+</html>

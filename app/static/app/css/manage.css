@@ -1,0 +1,64 @@
+/**
+ * 自定义 Bootstrap 3.4.1 navbar-inverse 样式
+ * 将默认黑色主题修改为“深天蓝”主题
+ */
+
+/* 导航栏主背景和边框 */
+.navbar-inverse {
+    background-color: #3498DB; /* 一种偏深的天蓝色 */
+    border-color: #2980B9;     /* 一个更深的同色系蓝色作为边框 */
+}
+
+/* 导航栏标题 (brand) 的文字颜色 */
+.navbar-inverse .navbar-brand {
+    color: #ffffff; /* 确保文字是白色 */
+}
+
+/* 导航栏标题在悬停或聚焦时的颜色 */
+.navbar-inverse .navbar-brand:hover,
+.navbar-inverse .navbar-brand:focus {
+    color: #ecf0f1; /* 悬停时变为极浅的灰色 */
+    background-color: transparent;
+}
+
+/* 导航栏链接的文字颜色 */
+.navbar-inverse .navbar-nav > li > a {
+    color: #ffffff; /* 确保文字是白色 */
+}
+
+/* 导航栏链接在悬停或聚焦时的颜色 */
+.navbar-inverse .navbar-nav > li > a:hover,
+.navbar-inverse .navbar-nav > li > a:focus {
+    color: #ffffff;
+    background-color: #2980B9; /* 悬停时使用更深的同色系蓝色背景 */
+}
+
+/* 当前激活状态的链接样式 */
+.navbar-inverse .navbar-nav > .active > a,
+.navbar-inverse .navbar-nav > .active > a:hover,
+.navbar-inverse .navbar-nav > .active > a:focus {
+    color: #ffffff;
+    background-color: #2471A3; /* 激活时使用最深的同色系蓝色背景 */
+}
+
+/* 移动端汉堡菜单按钮的边框颜色 */
+.navbar-inverse .navbar-toggle {
+    border-color: #2980B9;
+}
+
+/* 移动端汉堡菜单按钮悬停或聚焦时的背景和边框 */
+.navbar-inverse .navbar-toggle:hover,
+.navbar-inverse .navbar-toggle:focus {
+    background-color: #2980B9;
+}
+
+/* 移动端汉堡菜单按钮内部的横线颜色 */
+.navbar-inverse .navbar-toggle .icon-bar {
+    background-color: #ffffff;
+}
+
+/* 移动端下拉菜单的边框颜色 */
+.navbar-inverse .navbar-collapse,
+.navbar-inverse .navbar-form {
+    border-color: #2980B9;
+}
