@@ -1,18 +1,32 @@
-class BootStrapForm(object):
-    """
-    Bootstrap 风格表单的基类。
+from django import forms
 
-    这个 Mixin 会自动为继承它的表单中所有字段的 widget 添加
-    'form-control' class 和 '请输入[字段标签]' 格式的 placeholder，
-    从而简化表单在前端的渲染。
+
+class BootStrapForm:
     """
+    一个为Django表单字段自动应用Bootstrap样式的Mixin。
+
+    特性:
+    - 自动为所有字段添加 'form-control' CSS类。
+    - 智能地追加class，而不是粗暴地覆盖，保留字段原有的class。
+    - 仅在字段未设置placeholder时，根据其类型自动生成友好的提示文本。
+    - 可通过 `bootstrap_class_exclude` 列表排除特定字段。
+    """
+    bootstrap_class_exclude = []  # 定义要排除自动样式的字段名
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # 循环所有字段，为其添加通用的 class 和 placeholder 属性
         for name, field in self.fields.items():
-            # 为字段的 widget 添加 CSS class
-            field.widget.attrs['class'] = 'form-control'
+            if name in self.bootstrap_class_exclude:
+                continue
 
-            # 为字段的 widget 设置 placeholder
-            field.widget.attrs['placeholder'] = f"请输入{field.label}"
+            existing_classes = field.widget.attrs.get('class', '')
+            field.widget.attrs['class'] = f'{existing_classes} form-control'.strip()
+
+            if 'placeholder' not in field.widget.attrs:
+                if isinstance(field.widget, forms.Select):
+                    placeholder = f"请选择{field.label}"
+                else:
+                    placeholder = f"请输入{field.label}"
+
+                field.widget.attrs['placeholder'] = placeholder

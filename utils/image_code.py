@@ -8,7 +8,7 @@ class FontNotFound(Exception):
     pass
 
 
-def generate_verification_code(width=120, height=30, char_length=5, font_file='kumo.ttf', font_size=28):
+def generate_verification_code(width=120, height=30, char_length=4, font_file='kumo.ttf', font_size=28):
     """
     生成一个带有随机字符和干扰元素的图像验证码。
 

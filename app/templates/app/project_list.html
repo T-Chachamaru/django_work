@@ -2,22 +2,185 @@
 
 {% block css %}
 <style>
-    .project {
+    /* 基础容器样式 */
+    .project-container {
         margin-top: 20px;
+    }
+
+    /* Bootstrap Panel 样式覆盖 */
+    .panel-default > .panel-heading {
+        background-color: #f8f9fa; /* 更柔和的面板标题背景色 */
+        font-weight: bold;
+    }
+
+    .panel-body {
+        display: flex;
+        flex-wrap: wrap; /* 允许项目卡片换行 */
+        gap: 20px; /* 卡片之间的间距 */
+        min-height: 50px; /* 防止空面板塌陷 */
+    }
+
+    /* 单个项目卡片样式 */
+    .project-item {
+        width: calc(15% - 15px); /* 每行显示6个卡片，并考虑间距 */
+        min-height: 150px; /* 设置最小高度，让卡片更修长 */
+        border: 2px solid #e9ecef; /* 默认边框 */
+        border-radius: 8px;
+        background-color: #fff;
+        transition: all 0.3s ease; /* 平滑过渡效果 */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* 鼠标悬停效果 */
+    .project-item:hover {
+        border-color: #ffc107; /* 橙黄色边框 */
+        transform: translateY(-5px); /* 轻微上浮效果 */
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 卡片标题 */
+    .project-item .title {
+        color: #fff;
+        font-size: 16px;
+        font-weight: bold;
+        padding: 20px;
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
+        text-decoration: none;
+        display: block;
+    }
+    .project-item .title:hover {
+        text-decoration: none;
+        color: #fff;
+    }
+
+    /* 卡片信息区域 */
+    .project-item .info {
+        padding: 15px;
+        border-top: 1px solid #eee;
+        display: flex;
+        justify-content: space-between; /* 两端对齐 */
+        align-items: center;
+        color: #6c757d;
+        font-size: 13px;
+        flex-grow: 1; /* 占据剩余空间，使底部对齐 */
+    }
+
+    /* 星标图标 */
+    .star-icon a {
+        color: #adb5bd; /* 默认灰色 */
+        text-decoration: none;
+        font-size: 18px;
+        transition: all 0.2s ease;
+    }
+    .star-icon a:hover {
+        transform: scale(1.2);
+    }
+    .star-icon.starred a {
+        color: #ffc107; /* 已星标的项目显示为橙黄色 */
+    }
+
+    .color-radio label {
+        margin-left: 0;
+        padding-left: 0;
+    }
+
+    .color-radio input[type="radio"] {
+        display: none;
+    }
+
+    .color-radio input[type="radio"] + .cycle {
+        display: inline-block;
+        height: 25px;
+        width: 25px;
+        border-radius: 50%;
+        border: 2px solid #dddddd;
+    }
+
+    .color-radio input[type="radio"]:checked + .cycle {
+        border: 2px solid black;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid project">
-    <!-- 新建项目按钮，点击会触发下面的模态框 -->
+<div class="container-fluid project-container">
     <a class="btn btn-primary" data-toggle="modal" data-target="#addModal">
         <i class="fas fa-plus" aria-hidden="true"></i> 新建项目
     </a>
+
+    <div class="panel panel-default" style="margin-top: 20px;">
+        <div class="panel-heading"><i class="far fa-star"></i> 星标项目</div>
+        <div class="panel-body" id="panel-body-star">
+            {% for project in projects_dict.star %}
+                <div class="project-item">
+                    <a href="#" class="title" style="background-color: {{ project.value.get_color_display }};">{{ project.value.name }}</a>
+                    <div class="info">
+                        <span class="star-icon starred">
+                            <a href="javascript:void(0);" class="js-star-toggle" data-type="{{ project.type }}" data-id="{{ project.value.id }}">
+                                <i class="fas fa-star"></i>
+                            </a>
+                        </span>
+                        <span><i class="fas fa-user-tie"></i> {{ project.value.creator.username }}</span>
+                        <span><i class="far fa-user"></i> {{ project.value.join_count }}</span>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="empty-message">您还没有星标任何项目。</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading"><i class="fas fa-list-ul"></i> 我创建的</div>
+        <div class="panel-body" id="panel-body-my">
+            {% for project in projects_dict.my %}
+                <div class="project-item">
+                     <a href="#" class="title" style="background-color: {{ project.get_color_display }};">{{ project.name }}</a>
+                     <div class="info">
+                        <span class="star-icon {% if project.star %}starred{% endif %}">
+                            <a href="javascript:void(0);" class="js-star-toggle" data-type="my" data-id="{{ project.id }}">
+                                <i class="{% if project.star %}fas{% else %}far{% endif %} fa-star"></i>
+                            </a>
+                        </span>
+                         <span><i class="fas fa-user-tie"></i> {{ project.creator.username }}</span>
+                         <span><i class="far fa-user"></i> {{ project.join_count }}</span>
+                     </div>
+                </div>
+            {% empty %}
+                <p class="empty-message">您还没有创建任何项目。</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading"><i class="far fa-handshake"></i> 我参与的</div>
+        <div class="panel-body" id="panel-body-join">
+            {% for relation in projects_dict.join %}
+                 <div class="project-item">
+                     <a href="#" class="title" style="background-color: {{ relation.get_color_display }};">{{ relation.name }}</a>
+                     <div class="info">
+                        <span class="star-icon {% if relation.star %}starred{% endif %}">
+                             <a href="javascript:void(0);" class="js-star-toggle" data-type="join" data-id="{{ relation.id }}">
+                                <i class="{% if relation.star %}fas{% else %}far{% endif %} fa-star"></i>
+                             </a>
+                        </span>
+                         <span><i class="fas fa-user-tie"></i> {{ relation.creator.username }}</span>
+                         <span><i class="far fa-user"></i> {{ relation.join_count }}</span>
+                     </div>
+                 </div>
+            {% empty %}
+                 <p class="empty-message">您还没有参与任何项目。</p>
+            {% endfor %}
+        </div>
+    </div>
 </div>
 
 <!-- 新建项目的模态框 (Modal) -->
 <div class="modal fade" id="addModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <!-- ... 模态框内容保持不变 ... -->
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -25,7 +188,6 @@
                 <h4 class="modal-title" id="myModalLabel">新建项目</h4>
             </div>
             <div class="modal-body">
-                <!-- 新建项目的表单 -->
                 <form id="addForm" novalidate>
                     {% csrf_token %}
                     {% for field in form %}
@@ -48,29 +210,93 @@
 
 {% block js %}
 <script>
-    $(function() {
-        // 为模态框中的“确认”按钮绑定点击事件
-        $('#btnSubmit').click(function() {
+    $(function () {
+        $('#btnSubmit').click(function () {
             $('#addForm .error-msg').empty();
             $.ajax({
                 url: "{% url 'project_list' %}",
                 type: "POST",
                 data: $('#addForm').serialize(),
                 dataType: "json",
-                success: function(response) {
+                success: function (response) {
                     if (response.status) {
                         location.reload();
                     } else {
-                        $.each(response.error, function(key, messages) {
+                        $.each(response.error, function (key, messages) {
                             $(`#id_${key}`).closest('.form-group').find('.error-msg').text(messages[0]);
                         });
                     }
-                },
-                error: function() {
-                    alert("请求失败，请稍后重试。");
                 }
             });
         });
+
+        $('.js-star-toggle').click(function (event) {
+            event.preventDefault();
+
+            const $this = $(this);
+            const projectType = $this.data('type');
+            const projectId = $this.data('id');
+            const starUrl = `/project/star/${projectType}/${projectId}/`;
+
+            $.ajax({
+                url: starUrl,
+                type: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}'},
+                dataType: 'json',
+                success: function (response) {
+                    if (response.status) {
+                        handleStarSuccess(response, $this);
+                    } else {
+                        alert(response.error || '操作失败');
+                    }
+                },
+                error: function () {
+                    alert('网络错误，请稍后重试。');
+                }
+            });
+        });
+
+        function handleStarSuccess(response, $clickedLink) {
+            const isStarred = response.starred;
+            const projectType = $clickedLink.data('type');
+            const $projectItem = $clickedLink.closest('.project-item');
+            const $currentPanel = $projectItem.parent();
+
+            let $destinationPanel;
+            if (isStarred) {
+                $destinationPanel = $('#panel-body-star');
+            } else {
+                $destinationPanel = (projectType === 'my') ? $('#panel-body-my') : $('#panel-body-join');
+            }
+
+            const $icon = $projectItem.find('i.fa-star');
+            const $starSpan = $projectItem.find('.star-icon');
+            if (isStarred) {
+                $icon.removeClass('far').addClass('fas');
+                $starSpan.addClass('starred');
+            } else {
+                $icon.removeClass('fas').addClass('far');
+                $starSpan.removeClass('starred');
+            }
+
+            $destinationPanel.find('.empty-message').remove();
+
+            $projectItem.fadeOut(300, function () {
+                $(this).prependTo($destinationPanel).fadeIn(300);
+
+                if ($currentPanel.find('.project-item').length === 0) {
+                    let emptyMessage = '';
+                    if ($currentPanel.attr('id') === 'panel-body-star') {
+                        emptyMessage = '<p class="empty-message">您还没有星标任何项目。</p>';
+                    } else if ($currentPanel.attr('id') === 'panel-body-my') {
+                        emptyMessage = '<p class="empty-message">您还没有创建任何项目。</p>';
+                    } else {
+                        emptyMessage = '<p class="empty-message">您还没有参与任何项目。</p>';
+                    }
+                    $currentPanel.html(emptyMessage);
+                }
+            });
+        }
     });
 </script>
 {% endblock %}
