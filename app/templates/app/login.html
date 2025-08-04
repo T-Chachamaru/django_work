@@ -6,30 +6,28 @@
 {% block css %}
     <link rel="stylesheet" href="{% static 'app/css/account.css' %}">
     <style>
-        /* 错误信息样式 */
         .error-msg {
             color: red;
             font-size: 12px;
             position: absolute;
             left: 0;
-            bottom: -2px; /* 调整位置，使其更贴近输入框底部 */
+            bottom: -2px;
         }
         .form-group {
-            position: relative; /* 为错误信息提供定位上下文 */
-            padding-bottom: 20px; /* 为错误信息预留空间 */
-            margin-bottom: 0;   /* 移除Bootstrap默认外边距，精确控制间距 */
+            position: relative;
+            padding-bottom: 20px;
+            margin-bottom: 0;
         }
-        /* 图片验证码样式 */
         #imageCode {
-            cursor: pointer; /* 鼠标悬浮时显示为手型，提示用户可以点击 */
-            height: 34px;    /* 与Bootstrap输入框默认高度对齐 */
+            cursor: pointer;
+            height: 34px;
             width: 100%;
             object-fit: cover;
             border-radius: 4px;
         }
         .login-links {
             text-align: right;
-            margin-bottom: 15px; /* 与登录按钮之间留出一些间距 */
+            margin-bottom: 15px;
         }
     </style>
 {% endblock %}
@@ -45,7 +43,6 @@
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
 
                 {% if field.name == 'code' %}
-                    {# 图片验证码字段特殊布局，输入框和图片同行显示 #}
                     <div class="row">
                         <div class="col-xs-7">
                             {{ field }}
@@ -55,21 +52,17 @@
                         </div>
                     </div>
                 {% else %}
-                    {# 普通字段直接渲染 #}
                     {{ field }}
                 {% endif %}
 
-                {# 显示字段的第一个错误信息 #}
                 <span class="error-msg">{{ field.errors.0 }}</span>
             </div>
         {% endfor %}
 
-        {# 其他链接，如短信登录 #}
         <div class="login-links">
             <a href="{% url 'login_sms' %}">短信验证码登录?</a>
         </div>
 
-        {# 登录按钮 #}
         <button id="btnSubmit" type="submit" class="btn btn-primary btn-block">登 录</button>
     </form>
 </div>
@@ -78,15 +71,8 @@
 {% block js %}
 <script>
 $(document).ready(function () {
-    /**
-     * 点击图片验证码时，刷新图片。
-     * 通过在当前 src 后附加一个随机查询参数（如 '?'）来实现，
-     * 这会强制浏览器重新请求图片，而不是使用缓存。
-     */
     $('#imageCode').click(function () {
-        // 获取当前的 src，并移除可能存在的旧查询参数
         let currentSrc = $(this).attr('src').split('?')[0];
-        // 附加一个新的时间戳作为查询参数，确保URL唯一性
         $(this).attr('src', currentSrc + '?' + new Date().getTime());
     });
 });

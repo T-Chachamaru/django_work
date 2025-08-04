@@ -49,7 +49,7 @@ def generate_verification_code(width=120, height=30, char_length=4, font_file='k
     for i in range(char_length):
         char = get_random_char()
         code_chars.append(char)
-        x_pos = i * (width / char_length) + random.uniform(-2, 2)  # 添加水平抖动
+        x_pos = i * (width / char_length) + random.uniform(3, 7)  # 添加水平抖动
         y_pos = random.randint(0, 4)  # 轻微的垂直抖动
         draw.text(xy=(x_pos, y_pos), text=char, font=font, fill=get_random_color())
 

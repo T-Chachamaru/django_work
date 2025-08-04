@@ -1,4 +1,6 @@
 from django import forms
+from django.core.exceptions import ValidationError
+
 from app import models
 from app.forms.bootstrap import BootStrapForm
 from app.forms.widgets import ColorRadioSelect
@@ -38,7 +40,7 @@ class ProjectModelForm(BootStrapForm, forms.ModelForm):
             queryset = queryset.exclude(pk=self.instance.pk)
 
         if queryset.exists():
-            raise forms.ValidationError("项目名称已存在，请更换一个。")
+            raise ValidationError("项目名称已存在，请更换一个。")
 
         if not self.instance.pk:
             project_count = models.Project.objects.filter(
@@ -47,6 +49,6 @@ class ProjectModelForm(BootStrapForm, forms.ModelForm):
 
             max_project_num = self.request.tracer.price_policy.project_num
             if project_count >= max_project_num:
-                raise forms.ValidationError(f"项目数量已达上限（最多{max_project_num}个），请升级您的套餐。")
+                raise ValidationError(f"项目数量已达上限（最多{max_project_num}个），请升级您的套餐。")
 
         return name

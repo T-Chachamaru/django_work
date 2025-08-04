@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path,include
 
-from app.views import account, home, project
+from app.views import account, home, project, manage
 
 urlpatterns = [
     path('send/sms/', account.send_sms, name='send_sms'),
@@ -13,4 +13,13 @@ urlpatterns = [
     path('index/',home.index, name='index'),
     path('project/list/',project.project_list, name='project_list'),
     path('project/star/<str:project_type>/<int:project_id>/', project.project_star, name='project_star'),
+    path('manage/<int:project_id>/',include([
+        path('dashboard/', manage.dashboard, name='dashboard'),
+        path('issues/', manage.issues, name='issues'),
+        path('statistics/', manage.statistics, name='statistics'),
+        path('file/', manage.file, name='file'),
+        path('wiki/', manage.wiki, name='wiki'),
+        path('setting/', manage.setting, name='setting'),
+    ],None)),
+
 ]

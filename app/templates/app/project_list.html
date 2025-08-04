@@ -116,7 +116,7 @@
         <div class="panel-body" id="panel-body-star">
             {% for project in projects_dict.star %}
                 <div class="project-item">
-                    <a href="#" class="title" style="background-color: {{ project.value.get_color_display }};">{{ project.value.name }}</a>
+                    <a href="{% url 'dashboard' project_id=project.value.id %}" class="title" style="background-color: {{ project.value.get_color_display }};">{{ project.value.name }}</a>
                     <div class="info">
                         <span class="star-icon starred">
                             <a href="javascript:void(0);" class="js-star-toggle" data-type="{{ project.type }}" data-id="{{ project.value.id }}">
@@ -138,7 +138,7 @@
         <div class="panel-body" id="panel-body-my">
             {% for project in projects_dict.my %}
                 <div class="project-item">
-                     <a href="#" class="title" style="background-color: {{ project.get_color_display }};">{{ project.name }}</a>
+                     <a href="{% url 'dashboard' project_id=project.id %}" class="title" style="background-color: {{ project.get_color_display }};">{{ project.name }}</a>
                      <div class="info">
                         <span class="star-icon {% if project.star %}starred{% endif %}">
                             <a href="javascript:void(0);" class="js-star-toggle" data-type="my" data-id="{{ project.id }}">
@@ -160,7 +160,7 @@
         <div class="panel-body" id="panel-body-join">
             {% for relation in projects_dict.join %}
                  <div class="project-item">
-                     <a href="#" class="title" style="background-color: {{ relation.get_color_display }};">{{ relation.name }}</a>
+                     <a href="{% url 'dashboard' project_id=relation.id %}" class="title" style="background-color: {{ relation.get_color_display }};">{{ relation.name }}</a>
                      <div class="info">
                         <span class="star-icon {% if relation.star %}starred{% endif %}">
                              <a href="javascript:void(0);" class="js-star-toggle" data-type="join" data-id="{{ relation.id }}">

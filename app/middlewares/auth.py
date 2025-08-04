@@ -18,6 +18,7 @@ class Tracer(object):
     def __init__(self):
         self.user = None
         self.price_policy = None
+        self.project = None
 
 
 class AuthMiddleware(MiddlewareMixin):
@@ -66,3 +67,18 @@ class AuthMiddleware(MiddlewareMixin):
             request.tracer.price_policy = free_policy
 
         return None
+
+    def process_view(self, request, view, args, kwargs):
+
+        if not request.path_info.startswith('/manage/'):
+            return None
+        project_id = kwargs.get('project_id')
+        project_object = models.Project.objects.filter(id=project_id, creator=request.tracer.user).first()
+        if project_object:
+            request.tracer.project = project_object
+            return None
+        project_user_object = models.ProjectUser.objects.filter(user=request.tracer.user, project_id=project_id).first()
+        if project_user_object:
+            request.tracer.project = project_user_object.project
+            return None
+        return redirect('project_list')
