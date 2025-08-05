@@ -1,5 +1,220 @@
 {% extends 'app/layout/manage.html' %}
 
+{% block css %}
+    <style>
+        .panel-default {
+            margin-top: 10px;
+        }
+        .panel-default .panel-heading {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+        .panel-body {
+            padding: 0;
+        }
+        .title-list {
+            border-right: 1px solid #dddddd;
+            min-height: 600px;
+            padding: 15px 0;
+        }
+        #catalog, #catalog ul {
+            list-style: none;
+            padding-left: 25px;
+        }
+        #catalog {
+            padding-left: 15px;
+        }
+        #catalog li {
+            position: relative;
+            padding: 2px 0;
+        }
+        #catalog li::before, #catalog li::after {
+            content: '';
+            position: absolute;
+            left: -15px;
+            background-color: #ccc;
+        }
+        #catalog li::before { top: 15px; width: 10px; height: 1px; }
+        #catalog li:not(:last-child)::after { top: 0; width: 1px; height: 100%; }
+        #catalog a {
+            display: block;
+            padding: 6px 10px;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-radius: 4px;
+        }
+        #catalog a:hover { background-color: #f5f5f5; }
+        #catalog a.active { background-color: #337ab7; color: #fff; font-weight: bold; }
+        #catalog a i { margin-right: 8px; color: #999; }
+        #catalog a.active i { color: #fff; }
+        .content {
+            border-left: 1px solid #dddddd;
+            min-height: 600px;
+            margin-left: -1px;
+            padding: 20px;
+        }
+        .content pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+        }
+        .content th, .content td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .content th {
+            background-color: #f2f2f2;
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
-    <h1>Wiki</h1>
+    <div class="container-fluid">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <div><i class="fas fa-book"></i> wiki文档</div>
+                 <div class="function">
+                    <a type="button" class="btn btn-success btn-xs" href="{% url 'wiki_add' project_id=request.tracer.project.id %}">
+                        <i class="fas fa-plus-circle"></i> 新建
+                    </a>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="col-sm-3 title-list">
+                    <ul id="catalog"></ul>
+                </div>
+                <div class="col-sm-9 content" id="wiki-content-area">
+                    {% if wiki_object %}
+                        <h1>{{ wiki_object.title }}</h1>
+                        <div>{{ wiki_object.content|safe }}</div>
+                    {% else %}
+                        <div style="text-align: center;margin-top: 50px;">
+                            <h4>《{{ request.tracer.project.name }}》wiki文档库</h4>
+                            <a href="{% url 'wiki_add' project_id=request.tracer.project.id %}">
+                                <i class="fas fa-plus-circle"></i> 新建文章
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+    <script>
+        $(function() {
+            initCatalog();
+
+            $('#catalog').on('click', 'a', function(e) {
+                e.preventDefault();
+                const wikiId = $(this).data('wiki-id');
+                loadWikiContent(wikiId);
+            });
+
+            window.onpopstate = function(event) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const wikiId = urlParams.get('wiki_id');
+                if (wikiId) {
+                    loadWikiContent(wikiId, false);
+                }
+            };
+        });
+
+        function initCatalog() {
+            $.ajax({
+                url: "{% url 'wiki_catalog' project_id=request.tracer.project.id %}",
+                type: "GET",
+                dataType: "json",
+                success: function(response) {
+                    if (response.status) {
+                        renderCatalog(response.data);
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const wikiId = urlParams.get('wiki_id');
+                        if (wikiId) {
+                            setActiveCatalog(wikiId);
+                        }
+                    } else {
+                        alert("初始化目录失败");
+                    }
+                }
+            });
+        }
+
+        function renderCatalog(catalogData) {
+            const $catalog = $('#catalog');
+            $catalog.empty();
+            const catalogMap = {};
+
+            $.each(catalogData, function(index, item) {
+                const $li = $('<li>').attr('id', "id_" + item.id);
+                const $icon = $('<i>').addClass('fas fa-file-alt');
+                const $link = $('<a>').attr('href', 'javascript:void(0);').data('wiki-id', item.id).text(item.title);
+                $link.prepend($icon);
+                $li.append($link).append('<ul>');
+                catalogMap[item.id] = $li;
+            });
+
+            $.each(catalogData, function(index, item) {
+                const $li = catalogMap[item.id];
+                if (item.parent_id && catalogMap[item.parent_id]) {
+                    catalogMap[item.parent_id].children('ul').append($li);
+                } else {
+                    $catalog.append($li);
+                }
+            });
+
+            $.each(catalogMap, function(id, $li) {
+                if ($li.children('ul').children('li').length > 0) {
+                    $li.children('a').find('i').removeClass('fa-file-alt').addClass('fa-folder');
+                }
+            });
+        }
+
+        function loadWikiContent(wikiId, updateHistory = true) {
+            const $contentArea = $('#wiki-content-area');
+            const detailUrl = `{% url 'wiki' project_id=request.tracer.project.id %}?wiki_id=${wikiId}`;
+
+            $contentArea.html('<p>正在加载中...</p>');
+
+            $.ajax({
+                url: detailUrl,
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status) {
+                        const wiki = response.data;
+                        const contentHtml = `<h1>${wiki.title}</h1><div>${wiki.content}</div>`;
+                        $contentArea.html(contentHtml);
+
+                        if (updateHistory) {
+                            history.pushState({wikiId: wikiId}, wiki.title, detailUrl);
+                        }
+                        setActiveCatalog(wikiId);
+                    } else {
+                        $contentArea.html(`<p style="color:red;">加载失败: ${response.error}</p>`);
+                    }
+                },
+                error: function() {
+                    $contentArea.html('<p style="color:red;">网络错误，加载失败。</p>');
+                }
+            });
+        }
+
+        function setActiveCatalog(wikiId) {
+            $('#catalog a').removeClass('active');
+            $(`a[data-wiki-id='${wikiId}']`).addClass('active');
+        }
+    </script>
 {% endblock %}

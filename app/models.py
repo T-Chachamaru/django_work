@@ -90,3 +90,12 @@ class ProjectUser(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.project.name}"
+
+class Wiki(models.Model):
+    project = models.ForeignKey(verbose_name='项目', to='Project', on_delete=models.CASCADE)
+    title = models.CharField(verbose_name='标题', max_length=32)
+    content = models.TextField(verbose_name='内容')
+    parent = models.ForeignKey(verbose_name='父文章', to='Wiki', on_delete=models.CASCADE, null=True, blank=True, related_name='children')
+
+    def __str__(self):
+        return self.title
