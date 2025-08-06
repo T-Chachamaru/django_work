@@ -1,0 +1,194 @@
+{% extends 'app/layout/manage.html' %}
+{% load static %}
+
+{% block css %}
+    <link rel="stylesheet" href="{% static 'app/plugin/editor-md/css/editormd.min.css' %}">
+    <style>
+        .panel-default {
+            margin-top: 10px;
+        }
+        .panel-default .panel-heading {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+        .panel-body {
+            padding: 0;
+        }
+        .title-list {
+            border-right: 1px solid #dddddd;
+            min-height: 600px;
+            padding: 15px 0;
+        }
+        #catalog, #catalog ul {
+            list-style: none;
+            padding-left: 25px;
+        }
+        #catalog {
+            padding-left: 15px;
+        }
+        #catalog li {
+            position: relative;
+            padding: 2px 0;
+        }
+        #catalog li::before, #catalog li::after {
+            content: '';
+            position: absolute;
+            left: -15px;
+            background-color: #ccc;
+        }
+        #catalog li::before { top: 15px; width: 10px; height: 1px; }
+        #catalog li:not(:last-child)::after { top: 0; width: 1px; height: 100%; }
+        #catalog a {
+            display: block;
+            padding: 6px 10px;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-radius: 4px;
+        }
+        #catalog a:hover { background-color: #f5f5f5; }
+        #catalog a.active { background-color: #337ab7; color: #fff; font-weight: bold; }
+        #catalog a i { margin-right: 8px; color: #999; }
+        #catalog a.active i { color: #fff; }
+
+        .content {
+            border-left: 1px solid #dddddd;
+            min-height: 600px;
+            margin-left: -1px;
+            padding: 20px;
+        }
+
+        .editormd-fullscreen {
+            z-index: 1001;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="container-fluid">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <div><i class="fas fa-book"></i> wiki文档</div>
+                <div class="function">
+                    <a type="button" class="btn btn-default btn-xs" href="{% url 'wiki' project_id=request.tracer.project.id %}">
+                        <i class="fas fa-arrow-left"></i> 返回
+                    </a>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="col-sm-3 title-list">
+                    <ul id="catalog"></ul>
+                </div>
+                <div class="col-sm-9 content">
+                    <form method="post">
+                        {% csrf_token %}
+                        {% for field in form %}
+                        {% if field.name == "content" %}
+                        <div class="form-group">
+                            <label for="{{ field.id_for_label }}">{{ field.label}}</label>
+                            <div id="editor">
+                                {{ field }}
+                            </div>
+                            <span class="error-msg" style="color: red;">{{ field.errors.0 }}</span>
+                        </div>
+                        {% else %}
+                        <div class="form-group">
+                            <label for="{{ field.id_for_label }}">{{ field.label}}</label>
+                            {{ field }}
+                            <span class="error-msg" style="color: red;">{{ field.errors.0 }}</span>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                        <button type="submit" class="btn btn-primary">提交</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'app/plugin/editor-md/editormd.min.js' %}"></script>
+<script>
+    $(function() {
+        initCatalog();
+        initEditorMd();
+    });
+
+    function initEditorMd() {
+        editormd('editor',{
+            placeholder: "请输入内容",
+            height: 500,
+            path: "{% static 'app/plugin/editor-md/lib/' %}",
+            imageUpload: true,
+            imageFormats: ["jpg", "jpeg", "png", "gif"],
+            imageUploadURL: "{% url 'wiki_upload' project_id=request.tracer.project.id %}",
+
+            onfullscreen: function() {
+                $(this.editor).closest('.panel-default').css('z-index', 'auto');
+            },
+            onfullscreenExit: function() {
+                $(this.editor).closest('.panel-default').css('z-index', '');
+            }
+        });
+    }
+
+    function initCatalog() {
+        $.ajax({
+            url: "{% url 'wiki_catalog' project_id=request.tracer.project.id %}",
+            type: "GET",
+            dataType: "json",
+            success: function(response) {
+                if (response.status) {
+                    renderCatalog(response.data);
+                    const currentWikiId = '{{ wiki_id }}';
+                    if (currentWikiId) {
+                        setActiveCatalog(currentWikiId);
+                    }
+                } else {
+                    alert("初始化目录失败");
+                }
+            }
+        });
+    }
+
+    function renderCatalog(catalogData) {
+        const $catalog = $('#catalog');
+        $catalog.empty();
+        const catalogMap = {};
+
+        const wikiUrlTemplate = "{% url 'wiki' project_id=request.tracer.project.id %}";
+
+        $.each(catalogData, function(index, item) {
+            const $li = $('<li>').attr('id', "id_" + item.id);
+            const $icon = $('<i>').addClass('fas fa-file-alt');
+            const linkUrl = `${wikiUrlTemplate}?wiki_id=${item.id}`;
+            const $link = $('<a>').attr('href', linkUrl).text(item.title);
+            $link.prepend($icon);
+            $li.append($link).append('<ul>');
+            catalogMap[item.id] = $li;
+        });
+
+        $.each(catalogData, function(index, item) {
+            const $li = catalogMap[item.id];
+            if (item.parent_id && catalogMap[item.parent_id]) {
+                catalogMap[item.parent_id].children('ul').append($li);
+            } else {
+                $catalog.append($li);
+            }
+        });
+
+        $.each(catalogMap, function(id, $li) {
+            if ($li.children('ul').children('li').length > 0) {
+                $li.children('a').find('i').removeClass('fa-file-alt').addClass('fa-folder');
+            }
+        });
+    }
+
+    function setActiveCatalog(wikiId) {
+        $('#catalog a').removeClass('active');
+        $(`a[href*="wiki_id=${wikiId}"]`).addClass('active');
+    }
+</script>
+{% endblock %}

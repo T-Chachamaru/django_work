@@ -137,6 +137,12 @@ TENCENT_SMS_APP_TEMPLATE = {
     'login': 548762,
 }
 
+# COS
+# 腾讯COS的ID
+TENCENT_COS_ID = "aaaa"
+# 腾讯COS的KEY
+TENCENT_COS_KEY = "bbbb"
+
 # redis 配置
 CACHES = {
     'default': {
