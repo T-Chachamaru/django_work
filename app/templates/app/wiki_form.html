@@ -11,6 +11,7 @@
             display: flex;
             flex-direction: row;
             justify-content: space-between;
+            align-items: center;
         }
         .panel-body {
             padding: 0;
@@ -51,16 +52,14 @@
         #catalog a.active { background-color: #337ab7; color: #fff; font-weight: bold; }
         #catalog a i { margin-right: 8px; color: #999; }
         #catalog a.active i { color: #fff; }
-
         .content {
             border-left: 1px solid #dddddd;
             min-height: 600px;
             margin-left: -1px;
             padding: 20px;
         }
-
         .editormd-fullscreen {
-            z-index: 1001;
+            z-index: 1051;
         }
     </style>
 {% endblock %}
@@ -71,7 +70,8 @@
             <div class="panel-heading">
                 <div><i class="fas fa-book"></i> wiki文档</div>
                 <div class="function">
-                    <a type="button" class="btn btn-default btn-xs" href="{% url 'wiki' project_id=request.tracer.project.id %}">
+                    <a type="button" class="btn btn-default btn-xs"
+                       href="{% url 'wiki' project_id=request.tracer.project.id %}">
                         <i class="fas fa-arrow-left"></i> 返回
                     </a>
                 </div>
@@ -84,23 +84,23 @@
                     <form method="post">
                         {% csrf_token %}
                         {% for field in form %}
-                        {% if field.name == "content" %}
-                        <div class="form-group">
-                            <label for="{{ field.id_for_label }}">{{ field.label}}</label>
-                            <div id="editor">
-                                {{ field }}
-                            </div>
-                            <span class="error-msg" style="color: red;">{{ field.errors.0 }}</span>
-                        </div>
-                        {% else %}
-                        <div class="form-group">
-                            <label for="{{ field.id_for_label }}">{{ field.label}}</label>
-                            {{ field }}
-                            <span class="error-msg" style="color: red;">{{ field.errors.0 }}</span>
-                        </div>
-                        {% endif %}
+                            {% if field.name == "content" %}
+                                <div class="form-group">
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    <div id="editor">
+                                        {{ field }}
+                                    </div>
+                                    <span class="error-msg" style="color: red;">{{ field.errors.0 }}</span>
+                                </div>
+                            {% else %}
+                                <div class="form-group">
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    {{ field }}
+                                    <span class="error-msg" style="color: red;">{{ field.errors.0 }}</span>
+                                </div>
+                            {% endif %}
                         {% endfor %}
-                        <button type="submit" class="btn btn-primary">提交</button>
+                        <button type="submit" class="btn btn-primary">提 交</button>
                     </form>
                 </div>
             </div>
@@ -111,38 +111,38 @@
 {% block js %}
 <script src="{% static 'app/plugin/editor-md/editormd.min.js' %}"></script>
 <script>
-    $(function() {
+    $(function () {
         initCatalog();
         initEditorMd();
     });
 
+    /**
+     * 初始化 Editor.md 编辑器
+     */
     function initEditorMd() {
-        editormd('editor',{
+        editormd('editor', {
             placeholder: "请输入内容",
             height: 500,
             path: "{% static 'app/plugin/editor-md/lib/' %}",
             imageUpload: true,
             imageFormats: ["jpg", "jpeg", "png", "gif"],
             imageUploadURL: "{% url 'wiki_upload' project_id=request.tracer.project.id %}",
-
-            onfullscreen: function() {
-                $(this.editor).closest('.panel-default').css('z-index', 'auto');
-            },
-            onfullscreenExit: function() {
-                $(this.editor).closest('.panel-default').css('z-index', '');
-            }
         });
     }
 
+    /**
+     * 通过AJAX从后端获取Wiki目录结构并渲染。
+     * 在编辑页面，目录仅用于展示结构和上下文，点击会跳转页面。
+     */
     function initCatalog() {
         $.ajax({
             url: "{% url 'wiki_catalog' project_id=request.tracer.project.id %}",
             type: "GET",
             dataType: "json",
-            success: function(response) {
+            success: function (response) {
                 if (response.status) {
                     renderCatalog(response.data);
-                    const currentWikiId = '{{ wiki_id }}';
+                    const currentWikiId = '{{ form.instance.id }}';
                     if (currentWikiId) {
                         setActiveCatalog(currentWikiId);
                     }
@@ -153,6 +153,10 @@
         });
     }
 
+    /**
+     * 渲染目录树。
+     * @param {Array} catalogData - 从后端获取的目录数据列表。
+     */
     function renderCatalog(catalogData) {
         const $catalog = $('#catalog');
         $catalog.empty();
@@ -160,7 +164,7 @@
 
         const wikiUrlTemplate = "{% url 'wiki' project_id=request.tracer.project.id %}";
 
-        $.each(catalogData, function(index, item) {
+        $.each(catalogData, function (index, item) {
             const $li = $('<li>').attr('id', "id_" + item.id);
             const $icon = $('<i>').addClass('fas fa-file-alt');
             const linkUrl = `${wikiUrlTemplate}?wiki_id=${item.id}`;
@@ -170,7 +174,7 @@
             catalogMap[item.id] = $li;
         });
 
-        $.each(catalogData, function(index, item) {
+        $.each(catalogData, function (index, item) {
             const $li = catalogMap[item.id];
             if (item.parent_id && catalogMap[item.parent_id]) {
                 catalogMap[item.parent_id].children('ul').append($li);
@@ -179,13 +183,17 @@
             }
         });
 
-        $.each(catalogMap, function(id, $li) {
+        $.each(catalogMap, function (id, $li) {
             if ($li.children('ul').children('li').length > 0) {
                 $li.children('a').find('i').removeClass('fa-file-alt').addClass('fa-folder');
             }
         });
     }
 
+    /**
+     * 设置目录中的高亮项。
+     * @param {string} wikiId - 要高亮显示的文章ID。
+     */
     function setActiveCatalog(wikiId) {
         $('#catalog a').removeClass('active');
         $(`a[href*="wiki_id=${wikiId}"]`).addClass('active');

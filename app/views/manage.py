@@ -9,8 +9,5 @@ def issues(request, project_id):
 def statistics(request, project_id):
     return render(request, 'app/statistics.html')
 
-def file(request, project_id):
-    return render(request, 'app/file.html')
-
 def setting(request, project_id):
     return render(request, 'app/setting.html')

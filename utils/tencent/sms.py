@@ -3,7 +3,7 @@ from django.conf import settings
 from qcloudsms_py import SmsSingleSender
 from qcloudsms_py.httpclient import HTTPError
 
-# 警告：以下这行代码是为了绕过SSL证书验证，在某些开发环境中可能需要。
+# 以下这行代码是为了绕过SSL证书验证，在某些开发环境中可能需要。
 # 但在生产环境中，这会带来安全风险。正确的做法是确保服务器环境信任相关的SSL证书。
 # 如果非生产环境，可以保留；生产环境强烈建议移除，并配置好证书。
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -20,22 +20,15 @@ def send_sms_single(phone_num: str, template_id: int, template_param_list: list)
     Returns:
         dict: 腾讯云API返回的原始响应。如果发生网络错误，则返回一个自定义的错误字典。
     """
-    # 从 Django settings 中读取配置信息
     appid = settings.TENCENT_SMS_APP_ID
     appkey = settings.TENCENT_SMS_APP_KEY
     sms_sign = settings.TENCENT_SMS_APP_SIGN
-
-    # 初始化短信发送器
     sender = SmsSingleSender(appid, appkey)
-
     try:
-        # 发送带参数的短信，国家码默认为 86 (中国大陆)
         response = sender.send_with_param(
             86, phone_num, template_id, template_param_list, sign=sms_sign
         )
     except HTTPError as e:
-        # 捕获可能发生的网络异常
         response = {'result': -1, 'errmsg': "网络异常，短信发送失败"}
-
     return response
 

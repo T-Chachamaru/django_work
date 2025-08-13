@@ -22,8 +22,7 @@
         }
         #catalog, #catalog ul {
             list-style: none;
-            padding-left: 25px;
-        }
+            padding-left: 25px;        }
         #catalog {
             padding-left: 15px;
         }
@@ -37,8 +36,16 @@
             left: -15px;
             background-color: #ccc;
         }
-        #catalog li::before { top: 15px; width: 10px; height: 1px; }
-        #catalog li:not(:last-child)::after { top: 0; width: 1px; height: 100%; }
+        #catalog li::before {
+            top: 15px;
+            width: 10px;
+            height: 1px;
+        }
+        #catalog li:not(:last-child)::after {
+            top: 0;
+            width: 1px;
+            height: 100%;
+        }
         #catalog a {
             display: block;
             padding: 6px 10px;
@@ -47,10 +54,21 @@
             transition: all 0.2s ease;
             border-radius: 4px;
         }
-        #catalog a:hover { background-color: #f5f5f5; }
-        #catalog a.active { background-color: #337ab7; color: #fff; font-weight: bold; }
-        #catalog a i { margin-right: 8px; color: #999; }
-        #catalog a.active i { color: #fff; }
+        #catalog a:hover {
+            background-color: #f5f5f5;
+        }
+        #catalog a.active {
+            background-color: #337ab7;
+            color: #fff;
+            font-weight: bold;
+        }
+        #catalog a i {
+            margin-right: 8px;
+            color: #999;
+        }
+        #catalog a.active i {
+            color: #fff;
+        }
         .content {
             border-left: 1px solid #dddddd;
             min-height: 600px;
@@ -66,15 +84,18 @@
             <div class="panel-heading">
                 <div><i class="fas fa-book"></i> wiki文档</div>
                 <div class="function" id="wiki-actions">
-                    <a type="button" class="btn btn-success btn-xs" href="{% url 'wiki_add' project_id=request.tracer.project.id %}">
+                    <a type="button" class="btn btn-success btn-xs"
+                       href="{% url 'wiki_add' project_id=request.tracer.project.id %}">
                         <i class="fas fa-plus-circle"></i> 新建
                     </a>
                     {% if wiki_object %}
-                        <a type="button" class="btn btn-primary btn-xs" href="{% url 'wiki_edit' project_id=request.tracer.project.id wiki_id=wiki_object.id %}">
-                           <i class="fas fa-edit"></i> 编辑
+                        <a type="button" class="btn btn-primary btn-xs"
+                           href="{% url 'wiki_edit' project_id=request.tracer.project.id wiki_id=wiki_object.id %}">
+                            <i class="fas fa-edit"></i> 编辑
                         </a>
-                        <a type="button" class="btn btn-danger btn-xs" href="{% url 'wiki_delete' project_id=request.tracer.project.id wiki_id=wiki_object.id %}">
-                           <i class="fas fa-trash"></i> 删除
+                        <a type="button" class="btn btn-danger btn-xs"
+                           href="{% url 'wiki_delete' project_id=request.tracer.project.id wiki_id=wiki_object.id %}">
+                            <i class="fas fa-trash"></i> 删除
                         </a>
                     {% endif %}
                 </div>
@@ -86,7 +107,7 @@
                 <div class="col-sm-9 content" id="wiki-content-area">
                     {% if wiki_object %}
                         <div id="previewMarkdown">
-                           <textarea style="display:none;">{{ wiki_object.content }}</textarea>
+                            <textarea style="display:none;">{{ wiki_object.content }}</textarea>
                         </div>
                     {% else %}
                         <div style="text-align: center;margin-top: 50px;">
@@ -112,17 +133,17 @@
     <script src="{% static 'app/plugin/editor-md/lib/flowchart.min.js' %}"></script>
     <script src="{% static 'app/plugin/editor-md/lib/jquery.flowchart.min.js' %}"></script>
     <script>
-        $(function() {
+        $(function () {
             initCatalog();
             initPreviewMarkdown();
 
-            $('#catalog').on('click', 'a', function(e) {
+            $('#catalog').on('click', 'a', function (e) {
                 e.preventDefault();
                 const wikiId = $(this).data('wiki-id');
                 loadWikiContent(wikiId);
             });
 
-            window.onpopstate = function(event) {
+            window.onpopstate = function (event) {
                 const urlParams = new URLSearchParams(window.location.search);
                 const wikiId = urlParams.get('wiki_id');
                 if (wikiId) {
@@ -133,6 +154,10 @@
             };
         });
 
+        /**
+         * 初始化Markdown预览。
+         * 将textarea中的纯文本Markdown内容转换为格式化的HTML。
+         */
         function initPreviewMarkdown() {
             const previewContainer = $("#previewMarkdown");
             if (previewContainer.length) {
@@ -142,12 +167,15 @@
             }
         }
 
+        /**
+         * 通过AJAX从后端获取Wiki目录结构并渲染。
+         */
         function initCatalog() {
             $.ajax({
                 url: "{% url 'wiki_catalog' project_id=request.tracer.project.id %}",
                 type: "GET",
                 dataType: "json",
-                success: function(response) {
+                success: function (response) {
                     if (response.status) {
                         renderCatalog(response.data);
                         const urlParams = new URLSearchParams(window.location.search);
@@ -162,12 +190,17 @@
             });
         }
 
+        /**
+         * 渲染目录树。
+         * @param {Array} catalogData - 从后端获取的目录数据列表。
+         * 采用两遍循环法构建DOM树，以正确处理父子关系。
+         */
         function renderCatalog(catalogData) {
             const $catalog = $('#catalog');
             $catalog.empty();
             const catalogMap = {};
 
-            $.each(catalogData, function(index, item) {
+            $.each(catalogData, function (index, item) {
                 const $li = $('<li>').attr('id', "id_" + item.id);
                 const $icon = $('<i>').addClass('fas fa-file-alt');
                 const $link = $('<a>').attr('href', 'javascript:void(0);').data('wiki-id', item.id).text(item.title);
@@ -176,7 +209,7 @@
                 catalogMap[item.id] = $li;
             });
 
-            $.each(catalogData, function(index, item) {
+            $.each(catalogData, function (index, item) {
                 const $li = catalogMap[item.id];
                 if (item.parent_id && catalogMap[item.parent_id]) {
                     catalogMap[item.parent_id].children('ul').append($li);
@@ -185,60 +218,67 @@
                 }
             });
 
-            $.each(catalogMap, function(id, $li) {
+             $.each(catalogMap, function(id, $li) {
                 if ($li.children('ul').children('li').length > 0) {
                     $li.children('a').find('i').removeClass('fa-file-alt').addClass('fa-folder');
                 }
             });
         }
 
+        /**
+         * AJAX加载指定的Wiki文章内容并显示。
+         * @param {string} wikiId - 要加载的文章ID。
+         * @param {boolean} updateHistory - 是否要创建新的浏览器历史记录。
+         */
         function loadWikiContent(wikiId, updateHistory = true) {
             const detailUrl = `{% url 'wiki' project_id=request.tracer.project.id %}?wiki_id=${wikiId}`;
 
             $.ajax({
                 url: "{% url 'wiki' project_id=request.tracer.project.id %}",
                 type: 'GET',
-                data: { wiki_id: wikiId },
+                data: {wiki_id: wikiId},
                 dataType: 'json',
-                success: function(response) {
+                success: function (response) {
                     if (response.status) {
                         const wiki = response.data;
 
                         const contentHtml = `<div id="previewMarkdown"><textarea style="display:none;">${wiki.content}</textarea></div>`;
                         $('#wiki-content-area').html(contentHtml);
-
                         initPreviewMarkdown();
-
                         updateActionButtons(wiki.id);
-
                         if (updateHistory) {
                             history.pushState({wikiId: wikiId}, wiki.title, detailUrl);
                         }
                         setActiveCatalog(wikiId);
-
                     } else {
                         $('#wiki-content-area').html(`<p style="color:red; text-align: center; margin-top: 20px;">加载失败: ${response.error}</p>`);
                     }
                 },
-                error: function() {
+                error: function () {
                     $('#wiki-content-area').html('<p style="color:red; text-align: center; margin-top: 20px;">网络错误，加载失败。</p>');
                 }
             });
         }
 
+        /**
+         * 设置目录中的高亮项。
+         * @param {string} wikiId - 要高亮显示的文章ID。
+         */
         function setActiveCatalog(wikiId) {
             $('#catalog a').removeClass('active');
             $(`a[data-wiki-id='${wikiId}']`).addClass('active');
         }
 
+        /**
+         * 根据当前文章ID，动态更新“编辑”和“删除”按钮的链接。
+         * @param {string} wikiId - 当前文章的ID。
+         */
         function updateActionButtons(wikiId) {
             const addUrl = `{% url 'wiki_add' project_id=request.tracer.project.id %}`;
             const editUrlTemplate = "{% url 'wiki_edit' project_id=request.tracer.project.id wiki_id=99999 %}";
             const deleteUrlTemplate = "{% url 'wiki_delete' project_id=request.tracer.project.id wiki_id=99999 %}";
-
             const editUrl = editUrlTemplate.replace('99999', wikiId);
             const deleteUrl = deleteUrlTemplate.replace('99999', wikiId);
-
             const buttonsHtml = `
                 <a type="button" class="btn btn-success btn-xs" href="${addUrl}">
                     <i class="fas fa-plus-circle"></i> 新建
@@ -253,6 +293,9 @@
             $('#wiki-actions').html(buttonsHtml);
         }
 
+        /**
+         * 清空内容区和功能按钮，恢复到初始状态。
+         */
         function clearContentAndActions() {
             const addUrl = `{% url 'wiki_add' project_id=request.tracer.project.id %}`;
 
@@ -271,7 +314,7 @@
                 </a>
             `);
 
-             $('#catalog a').removeClass('active');
+            $('#catalog a').removeClass('active');
         }
     </script>
 {% endblock %}

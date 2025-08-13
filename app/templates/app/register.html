@@ -6,16 +6,15 @@
 {% block css %}
     <link rel="stylesheet" href="{% static 'app/css/account.css' %}">
     <style>
-        /* 错误信息样式 */
         .error-msg {
             color: red;
             font-size: 12px;
-            position: absolute; /* 相对于 form-group 定位 */
-            bottom: -5px;      /* 调整位置，避免与输入框重叠 */
+            position: absolute;
+            bottom: -5px;
         }
         .form-group {
-            position: relative; /* 为错误信息提供定位上下文 */
-            padding-bottom: 10px; /* 为错误信息预留空间 */
+            position: relative;
+            padding-bottom: 10px;
         }
     </style>
 {% endblock %}
@@ -31,7 +30,6 @@
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
 
                 {% if field.name == 'code' %}
-                    {# 验证码字段特殊布局，输入框和按钮同行显示 #}
                     <div class="row">
                         <div class="col-xs-7">{{ field }}</div>
                         <div class="col-xs-5">
@@ -39,7 +37,6 @@
                         </div>
                     </div>
                 {% else %}
-                    {# 普通字段直接渲染 #}
                     {{ field }}
                 {% endif %}
 
@@ -56,28 +53,25 @@
 <script>
 $(document).ready(function() {
 
-    // 绑定获取验证码按钮的点击事件
     $('#btnGetCode').click(function() {
         const $btn = $(this);
         const $mobileField = $('#id_mobile_phone');
         const $errorSpan = $mobileField.closest('.form-group').find('.error-msg');
 
-        $errorSpan.text(''); // 清除旧的错误信息
+        $errorSpan.text('');
 
-        // 发送AJAX请求获取验证码
         $.ajax({
             url: "{% url 'send_sms' %}",
             type: 'GET',
             data: {
                 mobile_phone: $mobileField.val(),
-                tpl: 'register' // 指定使用注册模板
+                tpl: 'register'
             },
             dataType: 'json',
             success: function(res) {
                 if (res.status) {
-                    startCountdown($btn); // 发送成功，开始倒计时
+                    startCountdown($btn);
                 } else {
-                    // 显示后端返回的错误信息
                     $.each(res.error, function(key, messages) {
                         $(`#id_${key}`).closest('.form-group').find('.error-msg').text(messages[0]);
                     });
@@ -89,27 +83,24 @@ $(document).ready(function() {
         });
     });
 
-    // 绑定注册按钮的点击事件
     $('#btnSubmit').click(function() {
-        $('.error-msg').text(''); // 提交前清除所有错误信息
+        $('.error-msg').text('');
 
         $.ajax({
             url: "{% url 'register' %}",
             type: 'POST',
-            data: $('#registerForm').serialize(), // 序列化表单数据
+            data: $('#registerForm').serialize(),
             dataType: 'json',
             success: function(res) {
                 if (res.status) {
-                    location.href = res.data; // 注册成功，跳转到指定页面
+                    location.href = res.data;
                 } else {
-                    // 注册失败，显示错误信息
                     $.each(res.error, function(key, messages) {
                         $(`#id_${key}`).closest('.form-group').find('.error-msg').text(messages[0]);
                     });
                 }
             },
             error: function() {
-                // 可在表单底部添加一个通用的错误提示区域
                 alert('注册失败，请检查网络后重试');
             }
         });

@@ -74,24 +74,18 @@ class RegisterForm(BootStrapForm, forms.ModelForm):
         """校验手机验证码是否正确"""
         code = self.cleaned_data['code']
         mobile_phone = self.cleaned_data.get('mobile_phone')
-
         # 确保手机号字段已通过验证
         if not mobile_phone:
             return code
-
         try:
             conn = get_redis_connection('default')
             stored_code = conn.get(mobile_phone)
-
             if not stored_code:
                 raise ValidationError("验证码失效或未发送")
-
             if code.strip() != stored_code.decode('utf-8'):
                 raise ValidationError("验证码错误")
         except Exception:
-            # 捕获Redis连接等潜在异常
             raise ValidationError("验证码校验失败，请稍后重试")
-
         return code
 
     def clean(self):
@@ -99,15 +93,10 @@ class RegisterForm(BootStrapForm, forms.ModelForm):
         cleaned_data = super().clean()
         password = cleaned_data.get('password')
         confirm_password = cleaned_data.get('confirm_password')
-
-        # 校验两次密码是否一致
         if password and confirm_password and password != confirm_password:
             self.add_error('confirm_password', '两次输入的密码不一致')
-
-        # 使用Django内置方法对密码进行安全加密
         if password:
             cleaned_data['password'] = make_password(password)
-
         return cleaned_data
 
 
@@ -125,23 +114,16 @@ class SendSmsForm(forms.Form):
     def clean_mobile_phone(self):
         """校验手机号并发送验证码"""
         mobile_phone = self.cleaned_data['mobile_phone']
-
-        # 从请求中获取短信模板类型（如：注册/登录）
         tpl = self.request.GET.get('tpl')
         template_id = settings.TENCENT_SMS_APP_TEMPLATE.get(tpl)
         if not template_id:
             raise ValidationError("短信模板不存在")
-
-        # 生成随机验证码
         code = random.randrange(1000, 9999)
         print(f"生成的验证码: {code}")  # 方便调试
-
         # 发送短信
         # res = send_sms_single(mobile_phone, template_id, [code, ])
         # if res.get('result') != 0:
         #     raise ValidationError(f'短信发送失败，{res["errmsg"]}')
-
-        # 将验证码存入Redis，有效期60秒
         conn = get_redis_connection('default')
         conn.set(mobile_phone, code, ex=60)
 
@@ -165,7 +147,6 @@ class LoginSmsForm(BootStrapForm, forms.Form):
         user_object = models.UserInfo.objects.filter(mobile_phone=mobile_phone).first()
         if not user_object:
             raise ValidationError('手机号未注册')
-
         # 将查询到的用户对象直接返回，供后续方法使用，避免二次查询
         return user_object
 
@@ -173,20 +154,14 @@ class LoginSmsForm(BootStrapForm, forms.Form):
         """校验验证码，此时mobile_phone字段已是user_object"""
         user_object = self.cleaned_data.get('mobile_phone')
         code = self.cleaned_data.get('code')
-
-        # 如果手机号验证未通过，则直接返回，无需校验验证码
         if not user_object:
             return code
-
         conn = get_redis_connection('default')
         stored_code = conn.get(user_object.mobile_phone)
-
         if not stored_code:
             raise ValidationError("验证码已失效，请重新发送")
-
         if code.strip() != stored_code.decode('utf-8'):
             raise ValidationError("验证码错误")
-
         return code
 
 
@@ -203,11 +178,9 @@ class LoginForm(BootStrapForm, forms.Form):
     def clean_code(self):
         """校验图片验证码"""
         code = self.cleaned_data.get('code')
-
         session_code = self.request.session.get('image_code')
         if not session_code:
             raise ValidationError("验证码已过期，请刷新页面")
-
         if code.strip().upper() != session_code.upper():
             raise ValidationError("验证码输入错误")
 
@@ -218,27 +191,17 @@ class LoginForm(BootStrapForm, forms.Form):
         全局校验，处理用户身份和密码验证。
         """
         cleaned_data = super().clean()
-        # 获取未被处理过的原始数据
         username = cleaned_data.get('username')
         password = cleaned_data.get('password')  # 这是用户输入的明文密码
-
-        # 如果前面的字段验证未通过，则无需继续
         if not all([username, password]):
             return cleaned_data
-
         # 使用 Q 对象实现 OR 查询，支持用户名或手机号登录
         user_object = models.UserInfo.objects.filter(
             Q(email=username) | Q(mobile_phone=username)
         ).first()
-
         if not user_object:
             raise ValidationError("用户名或密码错误")
-
-        # 使用 Django 内置的 check_password 函数比较明文密码和数据库中的哈希密码
         if not check_password(password, user_object.password):
             raise ValidationError("用户名或密码错误")
-
-        # 将查询到的用户对象存入 cleaned_data，方便视图函数使用
         cleaned_data['user_object'] = user_object
-
         return cleaned_data

@@ -105,7 +105,7 @@ $(document).ready(function() {
         $.ajax({
             url: "{% url 'login_sms' %}",
             type: 'POST',
-            data: $('#loginForm').serialize(), // 序列化表单数据
+            data: $('#loginForm').serialize(),
             dataType: 'json',
             success: function(res) {
                 if (res.status) {

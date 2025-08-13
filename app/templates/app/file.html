@@ -1,5 +1,316 @@
 {% extends 'app/layout/manage.html' %}
+{% load static %}
+
+{% block css %}
+<style>
+    .panel-default .panel-heading {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center; /* 垂直居中 */
+    }
+    .panel-default > .panel-heading a {
+        text-decoration: none;
+    }
+    .panel-default > .panel-heading span {
+        padding: 0 5px;
+    }
+    .panel-default > .panel-heading .function .upload {
+        position: relative;
+        overflow: hidden;
+    }
+    .panel-default > .panel-heading .function .upload input {
+        opacity: 0;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-    <h1>File</h1>
+<div class="container-fluid">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <div>
+                <a href="{% url 'file' project_id=request.tracer.project.id %}">
+                    <i class="fas fa-home"></i>
+                    <span>文件库</span>
+                </a>
+                {% for record in breadcrumb_list %}
+                    <a href="{% url 'file' project_id=request.tracer.project.id %}?folder={{ record.id }}">
+                        <i class="fas fa-caret-right"></i>
+                        <span>{{ record.name }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+
+            <div class="function">
+                <div class="btn btn-primary btn-xs upload">
+                    <div><i class="fas fa-upload"></i> 上传文件</div>
+                    <input type="file" multiple name="uploadFile" id="uploadFile">
+                </div>
+                <a class="btn btn-success btn-xs" data-toggle="modal" data-target="#addModal"
+                   data-whatever="新建文件夹">
+                    <i class="fas fa-plus-circle"></i> 新建文件夹
+                </a>
+            </div>
+        </div>
+
+        <table class="table table-hover">
+            <thead>
+            <tr>
+                <th>名称</th>
+                <th>文件大小</th>
+                <th>更新者</th>
+                <th>更新时间</th>
+                <th>操作</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for item in file_object_list %}
+                <tr>
+                    <td>
+                        {% if item.file_type == 2 %}
+                            <a href="{% url 'file' project_id=request.tracer.project.id %}?folder={{ item.id }}">
+                                <i class="fas fa-folder"></i>
+                                {{ item.name }}
+                            </a>
+                        {% else %}
+                            <i class="fas fa-file"></i>
+                            {{ item.name }}
+                        {% endif %}
+                    </td>
+                    <td>{% if item.file_type == 1 %}{{ item.file_size|filesizeformat }}{% else %} - {% endif %}</td>
+                    <td>{{ item.update_user.username }}</td>
+                    <td>{{ item.update_datetime|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        {% if item.file_type == 2 %}
+                            <a class="btn btn-default btn-xs" data-toggle="modal"
+                               data-target="#addModal" data-whatever="修改文件夹"
+                               data-name="{{ item.name }}" data-fid="{{ item.id }}">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        {% endif %}
+                        <a class="btn btn-danger btn-xs" data-toggle="modal"
+                           data-target="#alertModal" data-fid="{{ item.id }}">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center">目录为空，请新建或上传</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="addModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="myModalLabel">Modal title</h4>
+            </div>
+            <div class="modal-body">
+                <form id="addFolderForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="fid" id="fid">
+                    {% for field in form %}
+                        <div class="form-group">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            <span class="error-msg text-danger">{{ field.errors.0 }}</span>
+                        </div>
+                    {% endfor %}
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">取 消</button>
+                <button id="btnFormSubmit" type="button" class="btn btn-primary">确 定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="alertModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="alert alert-danger alert-dismissible fade in" role="alert" style="margin-bottom: 0;">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                    aria-hidden="true">×</span></button>
+            <h4>是否确定删除？</h4>
+            <p style="padding-top: 20px;padding-bottom: 20px;">
+                注意：删除文件夹将会一并删除其中所有的文件。
+            </p>
+            <p style="text-align: right;">
+                <button type="button" class="btn btn-default btn-sm" data-dismiss="modal">取 消</button>
+                <button id="btnDelete" type="button" class="btn btn-danger btn-sm">确 定</button>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{% static 'app/plugin/cos-js-sdk-v5.min.js' %}"></script>
+<script>
+    var FILE_DELETE_URL = "{% url 'file_delete' project_id=request.tracer.project.id %}";
+    var COS_CREDENTIAL_URL = "{% url 'cos_credential' project_id=request.tracer.project.id %}";
+
+    $(function () {
+        initModalEvents();
+        bindFormSubmit();
+        bindDeleteSubmit();
+        bindUploadFile();
+    });
+
+    /**
+     * 绑定文件上传事件
+     */
+    function bindUploadFile() {
+        $('#uploadFile').change(function () {
+            var fileList = $(this)[0].files;
+            if (fileList.length === 0) return;
+
+            var checkFileList = [];
+            $.each(fileList, function (index, fileObject) {
+                checkFileList.push({'name': fileObject.name, 'size': fileObject.size});
+            });
+
+            // 1. 先向后端请求临时密钥和上传许可
+            var cos_credential = new COS({
+                getAuthorization: function (options, callback) {
+                    $.post(COS_CREDENTIAL_URL, JSON.stringify(checkFileList), function (res) {
+                        if (res.status) {
+                            var credentials = res.data && res.data.credentials;
+                            callback({
+                                TmpSecretId: credentials.tmpSecretId,
+                                TmpSecretKey: credentials.tmpSecretKey,
+                                XCosSecurityToken: credentials.sessionToken,
+                                StartTime: res.data.startTime,
+                                ExpiredTime: res.data.expiredTime,
+                            });
+                        } else {
+                            alert(res.error);
+                        }
+                    }).fail(function() {
+                        alert("获取上传凭证失败，请检查网络或联系管理员。");
+                    });
+                }
+            });
+
+            // 2. 遍历每个文件，使用获取到的凭证进行上传
+            $.each(fileList, function (index, fileObject) {
+                var currentFolderId = new URLSearchParams(window.location.search).get('folder');
+                var key = fileObject.name;
+                if (currentFolderId) {
+                    key = currentFolderId + '/' + key;
+                }
+
+                cos_credential.putObject({
+                    Bucket: '{{ request.tracer.project.bucket }}',
+                    Region: '{{ request.tracer.project.region }}',
+                    Key: key,
+                    Body: fileObject,
+                    onProgress: function (progressData) {
+                        console.log("文件上传进度 ->", fileObject.name, JSON.stringify(progressData));
+                    }
+                }, function (err, data) {
+                    if (err) {
+                        console.error('上传失败:', fileObject.name, err);
+                        alert(fileObject.name + " 上传失败");
+                    } else {
+                        console.log('上传成功:', fileObject.name, data);
+                        location.reload();
+                    }
+                });
+            });
+        });
+    }
+
+    /**
+     * 绑定删除按钮的点击事件
+     */
+    function bindDeleteSubmit() {
+        $('#btnDelete').click(function () {
+            var fileId = $(this).attr("data-fid");
+            $.ajax({
+                url: FILE_DELETE_URL,
+                type: "GET",
+                data: { fid: fileId },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.status) {
+                        location.reload();
+                    } else {
+                        alert(res.error);
+                    }
+                },
+                error: function() {
+                    alert("删除失败，请稍后重试。");
+                }
+            });
+        });
+    }
+
+    /**
+     * 初始化模态框相关的事件
+     */
+    function initModalEvents() {
+        $('#addModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var title = button.data('whatever');
+            var name = button.data('name');
+            var fid = button.data('fid');
+            var modal = $(this);
+
+            modal.find('.modal-title').text(title);
+
+            if (fid) {
+                modal.find('#id_name').val(name);
+                modal.find('#fid').val(fid);
+            } else {
+                modal.find('.error-msg').empty();
+                $('#addFolderForm')[0].reset();
+            }
+        });
+
+        $('#alertModal').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget);
+            var fid = button.data('fid');
+            $('#btnDelete').attr('data-fid', fid);
+        });
+    }
+
+    /**
+     * 绑定"新建/编辑文件夹"表单的提交事件
+     */
+    function bindFormSubmit() {
+        $('#btnFormSubmit').click(function () {
+            $.ajax({
+                url: location.href,
+                type: "POST",
+                data: $("#addFolderForm").serialize(),
+                dataType: 'json',
+                success: function (res) {
+                    if (res.status) {
+                        location.reload();
+                    } else {
+                        $.each(res.error, function (key, messages) {
+                            $(`#id_${key}`).closest('.form-group').find('.error-msg').text(messages[0]);
+                        });
+                    }
+                }
+            });
+        });
+    }
+</script>
 {% endblock %}
