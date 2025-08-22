@@ -15,7 +15,6 @@ class BootStrapForm:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         for name, field in self.fields.items():
             if name in self.bootstrap_class_exclude:
                 continue
@@ -28,5 +27,4 @@ class BootStrapForm:
                     placeholder = f"请选择{field.label}"
                 else:
                     placeholder = f"请输入{field.label}"
-
                 field.widget.attrs['placeholder'] = placeholder

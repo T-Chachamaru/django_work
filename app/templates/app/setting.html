@@ -1,5 +1,125 @@
 {% extends 'app/layout/manage.html' %}
+{% load static %}
+
+{% block css %}
+    <style>
+        .choose {
+            border-left: 2px solid #f90 !important;
+        }
+        .setting-panel .panel-body {
+            padding: 20px;
+        }
+        .setting-panel h4 {
+            margin-top: 0;
+            font-weight: bold;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+{% endblock %}
 
 {% block content %}
-    <h1>Setting</h1>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-3">
+            <div class="panel panel-default">
+                <div class="panel-heading" style="background-color: transparent; font-weight: bold;">
+                    <i class="fas fa-cogs"></i> 项目设置
+                </div>
+                <div class="list-group">
+                    <a href="#general" data-toggle="tab" class="list-group-item choose">
+                        <i class="fas fa-info-circle"></i> 基本信息
+                    </a>
+                    <a href="#members" data-toggle="tab" class="list-group-item">
+                        <i class="fas fa-users"></i> 成员管理
+                    </a>
+                    <a href="#danger" data-toggle="tab" class="list-group-item">
+                        <i class="fas fa-exclamation-triangle"></i> 危险区域
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-9">
+            <div class="panel panel-default setting-panel">
+                <div class="panel-body">
+                    <div class="tab-content">
+
+                        <div class="tab-pane active" id="general">
+                            <h4><i class="fas fa-info-circle"></i> 基本信息</h4>
+                            <p>这里可以放置用于修改项目名称、描述、颜色等信息的表单。</p>
+
+                            <form class="form-horizontal">
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label">项目名称</label>
+                                    <div class="col-sm-6">
+                                        <input type="text" class="form-control" value="{{ request.tracer.project.name }}">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-sm-2 control-label">项目描述</label>
+                                    <div class="col-sm-6">
+                                        <textarea class="form-control">{{ request.tracer.project.desc }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <div class="col-sm-offset-2 col-sm-6">
+                                        <button type="submit" class="btn btn-primary">保存更改</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="tab-pane" id="members">
+                            <h4><i class="fas fa-users"></i> 成员管理</h4>
+                            <p>这里可以放置一个表格，用于展示、添加或移除项目成员。</p>
+                            <table class="table">
+                                <thead>
+                                    <tr><th>用户名</th><th>角色</th><th>操作</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>张三</td><td>管理员</td><td><a href="#">移除</a></td></tr>
+                                    <tr><td>李四</td><td>开发者</td><td><a href="#">移除</a></td></tr>
+                                </tbody>
+                            </table>
+                            <button class="btn btn-success"><i class="fas fa-plus"></i> 添加新成员</button>
+                        </div>
+
+                        <div class="tab-pane" id="danger">
+                            <h4><i class="fas fa-exclamation-triangle"></i> 危险区域</h4>
+                            <p>包含一些不可逆的危险操作，例如删除项目。</p>
+                            <div class="alert alert-danger">
+                                <strong>删除项目</strong>
+                                <p class="small" style="margin-top: 5px;">一旦删除，项目及其所有相关数据都将永久消失，无法恢复。</p>
+                                <a href="{% url 'setting_delete' project_id=request.tracer.project.id %}" class="btn btn-danger btn-sm" style="margin-top: 10px;">
+                                    前往删除页面
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+    $(document).ready(function() {
+        $('.list-group a[data-toggle="tab"]').on('click', function (e) {
+            e.preventDefault();
+            $(this).tab('show');
+            $('.list-group a').removeClass('choose');
+            $(this).addClass('choose');
+        });
+
+        const hash = window.location.hash;
+        if (hash) {
+            $(`.list-group a[href="${hash}"]`).tab('show');
+            $('.list-group a').removeClass('choose');
+            $(`.list-group a[href="${hash}"]`).addClass('choose');
+        }
+    });
+</script>
 {% endblock %}

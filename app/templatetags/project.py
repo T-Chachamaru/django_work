@@ -1,10 +1,9 @@
 from django.template import Library
 from django.urls import reverse
 from app import models
+from django import template
 
-# 实例化一个Library对象，用于注册自定义模板标签
 register = Library()
-
 
 @register.inclusion_tag('app/inclusion/all_project_list.html')
 def all_project_list(request):
@@ -36,3 +35,12 @@ def manage_menu_list(request):
         if request.path_info.startswith(item['url']):
             item['class'] = 'active'
     return {'data_list': data_list}
+
+@register.inclusion_tag('app/inclusion/_project_card.html')
+def render_project_card(project_item, project_type):
+    """
+    渲染一个项目卡片的 inclusion tag。
+    :param project_item: 项目对象 (Project model instance)
+    :param project_type: 项目类型 ('my' or 'join')
+    """
+    return {'project': project_item, 'project_type': project_type}

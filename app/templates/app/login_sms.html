@@ -5,33 +5,17 @@
 
 {% block css %}
     <link rel="stylesheet" href="{% static 'app/css/account.css' %}">
-    <style>
-        /* 错误信息样式 */
-        .error-msg {
-            color: red;
-            font-size: 12px;
-            position: absolute; /* 相对于 form-group 定位 */
-            bottom: -5px;      /* 调整位置，避免与输入框重叠 */
-        }
-        .form-group {
-            position: relative; /* 为错误信息提供定位上下文 */
-            padding-bottom: 10px; /* 为错误信息预留空间 */
-        }
-    </style>
 {% endblock %}
 
 {% block content %}
 <div class="account">
     <h2 class="title">短信登录</h2>
-    <form id="loginForm" method="post" novalidate>
+    <form id="loginSmsForm" method="post" novalidate>
         {% csrf_token %}
-
         {% for field in form %}
             <div class="form-group">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-
                 {% if field.name == 'code' %}
-                    {# 验证码字段特殊布局，输入框和按钮同行显示 #}
                     <div class="row">
                         <div class="col-xs-7">{{ field }}</div>
                         <div class="col-xs-5">
@@ -39,110 +23,175 @@
                         </div>
                     </div>
                 {% else %}
-                    {# 普通字段直接渲染 #}
                     {{ field }}
                 {% endif %}
-
                 <span class="error-msg"></span>
             </div>
         {% endfor %}
-
-        <div>
-            <div style="float: right;">
-                <a href="{% url 'login' %}">用户名密码登陆?</a>
+        <div class="clearfix" style="margin-bottom: 10px;">
+            <div class="pull-right">
+                <a href="{% url 'login' %}">用户名密码登录</a>
             </div>
         </div>
-
         <button id="btnSubmit" type="button" class="btn btn-primary btn-block">登 录</button>
     </form>
+    <div class="text-center" style="margin-top: 15px;">
+        <p class="small">还没有账户？ <a href="{% url 'register' %}">立即注册</a></p>
+    </div>
 </div>
 {% endblock %}
 
 {% block js %}
 <script>
-$(document).ready(function() {
-
-    // 绑定获取验证码按钮的点击事件
-    $('#btnGetCode').click(function() {
-        const $btn = $(this);
-        const $mobileField = $('#id_mobile_phone');
-        const $errorSpan = $mobileField.closest('.form-group').find('.error-msg');
-
-        // 清除旧的错误信息
-        $errorSpan.text('');
-
-        // 发送AJAX请求获取验证码
-        $.ajax({
-            url: "{% url 'send_sms' %}",
-            type: 'GET',
-            data: {
-                mobile_phone: $mobileField.val(),
-                tpl: 'login'
-            },
-            dataType: 'json',
-            success: function(res) {
-                if (res.status) {
-                    // 发送成功，开始倒计时
-                    startCountdown($btn);
-                } else {
-                    // 显示后端返回的错误信息
-                    $.each(res.error, function(key, messages) {
-                        $(`#id_${key}`).closest('.form-group').find('.error-msg').text(messages[0]);
-                    });
-                }
-            },
-            error: function() {
-                $errorSpan.text('网络错误，请稍后重试');
-            }
-        });
-    });
-
-    // 绑定登录按钮的点击事件
-    $('#btnSubmit').click(function() {
-        // 提交前清除所有错误信息
-        $('.error-msg').text('');
-
-        $.ajax({
-            url: "{% url 'login_sms' %}",
-            type: 'POST',
-            data: $('#loginForm').serialize(),
-            dataType: 'json',
-            success: function(res) {
-                if (res.status) {
-                    // 登录成功，跳转到指定页面
-                    location.href = res.data;
-                } else {
-                    // 登录失败，显示错误信息
-                    $.each(res.error, function(key, messages) {
-                        $(`#id_${key}`).closest('.form-group').find('.error-msg').text(messages[0]);
-                    });
-                }
-            },
-            error: function() {
-                 // 通常在登录按钮下显示通用错误
-                 $('#btnSubmit').closest('.form-group').find('.error-msg').text('登录失败，请检查网络');
-            }
-        });
-    });
-
     /**
-     * 启动按钮倒计时
-     * @param {jQuery} $btn - 需要进行倒计时的按钮对象
+     * AJAX 短信登录管理器
+     * - 封装了获取验证码和提交登录表单的所有交互逻辑。
+     * - 提供了更好的用户反馈和错误处理。
      */
-    function startCountdown($btn) {
-        let seconds = 60;
-        $btn.prop('disabled', true).text(`${seconds}秒后重试`);
+    const LoginSmsManager = {
+        endpoints: {
+            sendSms: "{% url 'send_sms' %}",
+            login: "{% url 'login_sms' %}",
+        },
+        elements: {
+            form: $('#loginSmsForm'),
+            btnGetCode: $('#btnGetCode'),
+            btnSubmit: $('#btnSubmit'),
+        },
+        countdownTimer: null,
 
-        const timer = setInterval(function() {
-            seconds--;
-            if (seconds > 0) {
-                $btn.text(`${seconds}秒后重试`);
-            } else {
-                clearInterval(timer);
-                $btn.prop('disabled', false).text('点击获取验证码');
+        init: function() {
+            this.bindEvents();
+        },
+
+        /**
+         * 绑定所有事件监听器
+         */
+        bindEvents: function() {
+            const self = this;
+            self.elements.btnGetCode.on('click', () => self.handleSendSms());
+            self.elements.btnSubmit.on('click', () => self.handleSubmit());
+        },
+
+        /**
+         * 处理发送短信验证码的逻辑
+         */
+        handleSendSms: function() {
+            const self = this;
+            const mobileField = $('#id_mobile_phone');
+            const mobile = mobileField.val();
+
+            if (!mobile) {
+                self.showFieldError(mobileField, '请输入手机号');
+                return;
             }
-        }, 1000);
-    }
-});
+
+            self.clearAllErrors();
+            self.elements.btnGetCode.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> 发送中...');
+
+            $.ajax({
+                url: self.endpoints.sendSms,
+                type: 'GET',
+                data: { mobile_phone: mobile, tpl: 'login' },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status) {
+                        self.startCountdown();
+                    } else {
+                        self.displayErrors(response.error);
+                        self.elements.btnGetCode.prop('disabled', false).text('点击获取验证码');
+                    }
+                },
+                error: function() {
+                    self.showFieldError(mobileField, '网络错误，请稍后重试');
+                    self.elements.btnGetCode.prop('disabled', false).text('点击获取验证码');
+                }
+            });
+        },
+
+        /**
+         * 处理提交登录表单的逻辑
+         */
+        handleSubmit: function() {
+            const self = this;
+            self.clearAllErrors();
+
+            const originalButtonText = self.elements.btnSubmit.text();
+            self.elements.btnSubmit.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> 登录中...');
+
+            $.ajax({
+                url: self.endpoints.login,
+                type: 'POST',
+                data: self.elements.form.serialize(),
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status) {
+                        window.location.href = response.data;
+                    } else {
+                        self.displayErrors(response.error);
+                    }
+                },
+                error: function() {
+                    self.displayErrors({ '__all__': ['登录失败，请检查网络后重试'] });
+                },
+                complete: function() {
+                    self.elements.btnSubmit.prop('disabled', false).text(originalButtonText);
+                }
+            });
+        },
+
+        /**
+         * 启动按钮倒计时
+         */
+        startCountdown: function() {
+            const self = this;
+            let seconds = 60;
+            self.elements.btnGetCode.prop('disabled', true).text(`${seconds}秒后重试`);
+
+            if (self.countdownTimer) clearInterval(self.countdownTimer);
+
+            self.countdownTimer = setInterval(function() {
+                seconds--;
+                if (seconds > 0) {
+                    self.elements.btnGetCode.text(`${seconds}秒后重试`);
+                } else {
+                    clearInterval(self.countdownTimer);
+                    self.elements.btnGetCode.prop('disabled', false).text('点击获取验证码');
+                }
+            }, 1000);
+        },
+
+        /**
+         * 显示后端返回的表单错误信息
+         */
+        displayErrors: function(errors) {
+            const self = this;
+            $.each(errors, function(key, messages) {
+                if (key === '__all__') {
+                    alert(messages[0]);
+                } else {
+                    self.showFieldError($(`#id_${key}`), messages[0]);
+                }
+            });
+        },
+
+        /**
+         * 在指定字段下方显示错误信息
+         */
+        showFieldError: function($field, message) {
+            $field.closest('.form-group').find('.error-msg').text(message);
+        },
+
+        /**
+         * 清除所有字段的错误信息
+         */
+        clearAllErrors: function() {
+            this.elements.form.find('.error-msg').text('');
+        }
+    };
+
+    $(document).ready(function() {
+        LoginSmsManager.init();
+    });
 </script>
 {% endblock %}

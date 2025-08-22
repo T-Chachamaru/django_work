@@ -1,0 +1,14 @@
+<div class="project-item">
+    <a href="{% url 'dashboard' project_id=project.id %}" class="title" style="background-color: {{ project.get_color_display }};">
+        {{ project.name }}
+    </a>
+    <div class="info">
+        <span class="star-icon {% if project.star %}starred{% endif %}">
+            <a href="javascript:void(0);" class="js-star-toggle" data-type="{{ project_type }}" data-id="{{ project.id }}">
+                <i class="{% if project.star %}fas{% else %}far{% endif %} fa-star"></i>
+            </a>
+        </span>
+        <span title="创建者"><i class="fas fa-user-tie"></i> {{ project.creator.username }}</span>
+        <span title="参与人数"><i class="far fa-user"></i> {{ project.join_count }}</span>
+    </div>
+</div>

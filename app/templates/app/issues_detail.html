@@ -1,0 +1,297 @@
+{% extends 'app/layout/manage.html' %}
+{% load static %}
+{% load project %}
+
+{% block css %}
+    <link rel="stylesheet" href="{% static 'app/plugin/editor-md/css/editormd.min.css' %}">
+    <link rel="stylesheet" href="{% static 'app/plugin/bootstrap-datetimepicker/css/bootstrap-datetimepicker.min.css' %}">
+    <link rel="stylesheet" href="{% static 'app/plugin/bootstrap-select-1.13.18/css/bootstrap-select.min.css' %}">
+    <style>
+        .edit-panel, .record-panel { padding: 20px; }
+        .comment-area .item { margin-top: 20px; display: flex; }
+        .comment-area .left-avatar {
+            flex-shrink: 0; margin-right: 15px; width: 40px; height: 40px;
+            background-color: #304659; color: white; text-align: center;
+            line-height: 40px; border-radius: 50%; font-size: 18px; font-weight: bold;
+        }
+        .comment-area .right-info { flex-grow: 1; }
+        .comment-area .right-info .info-header { font-weight: bold; margin-bottom: 5px; }
+        .comment-area .right-info .info-content {
+            background-color: #f5f5f5; padding: 10px; border-radius: 6px;
+            word-wrap: break-word; white-space: pre-wrap;
+        }
+        .comment-area .right-info .info-footer {
+            margin-top: 8px; font-size: 12px; color: #8c8c8c;
+            display: flex; gap: 15px; align-items: center;
+        }
+        .comment-area .info-footer a.reply { color: #337ab7; cursor: pointer; }
+        .comment-area .child { padding-left: 55px; margin-top: 15px; }
+        #replyUser {
+            display: inline-block; background-color: #e9ecef; color: black;
+            padding: 6px 10px; margin-left: 10px; border-radius: 8px;
+            cursor: pointer; font-size: 12px;
+        }
+        #replyUser i { margin-left: 8px; }
+        .editormd-fullscreen { z-index: 1051; }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="padding: 20px 0;">
+    <div class="row">
+        <div class="col-sm-7">
+            <div class="panel panel-default">
+                <div class="panel-heading"><i class="fas fa-edit"></i> 更新问题</div>
+                <div class="panel-body edit-panel">
+                    <form id="editForm" class="form-horizontal" method="post" novalidate>
+                        {% csrf_token %}
+                        {% include 'app/inclusion/_form_field.html' with field=form.subject %}
+                        <div class="form-group">
+                            <label for="{{ form.desc.id_for_label }}" class="col-sm-2 control-label">{{ form.desc.label }}</label>
+                            <div class="col-sm-10">
+                                <div id="editor">{{ form.desc }}</div>
+                                {% if form.desc.errors %}<span class="error-msg">{{ form.desc.errors.0 }}</span>{% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            {% include 'app/inclusion/_form_field_split.html' with field=form.status %}
+                            {% include 'app/inclusion/_form_field_split.html' with field=form.priority %}
+                        </div>
+                        <div class="row">
+                            {% include 'app/inclusion/_form_field_split.html' with field=form.issues_type %}
+                            {% include 'app/inclusion/_form_field_split.html' with field=form.module %}
+                        </div>
+                        <div class="row">
+                            {% include 'app/inclusion/_form_field_split.html' with field=form.assign %}
+                            {% include 'app/inclusion/_form_field_split.html' with field=form.attention %}
+                        </div>
+                        <div class="row">
+                            {% include 'app/inclusion/_form_field_split.html' with field=form.start_date %}
+                            {% include 'app/inclusion/_form_field_split.html' with field=form.end_date %}
+                        </div>
+                         <div class="row">
+                            {% include 'app/inclusion/_form_field_split.html' with field=form.mode %}
+                            {% include 'app/inclusion/_form_field_split.html' with field=form.parent %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-5">
+            <div class="panel panel-default">
+                <div class="panel-heading"><i class="fas fa-history"></i> 操作记录</div>
+                <div class="panel-body record-panel">
+                    <div class="comment-list" id="commentList">
+                        <p class="text-muted"><i class="fas fa-spinner fa-spin"></i> 正在加载操作记录...</p>
+                    </div>
+                    <hr/>
+                    <div class="comment-text" id="commentText">
+                        <div class="form-group">
+                            <textarea id="replyContent" rows="4" class="form-control" placeholder="请输入回复内容..."></textarea>
+                            <span class="error-msg"></span>
+                        </div>
+                        <button class="btn btn-primary" type="button" id="btnSubmitReply">
+                            <i class="fas fa-paper-plane"></i> 提 交
+                        </button>
+                        <div class="hide" id="replyUser" title="点击取消回复">
+                            回复: <span></span> <i class="fas fa-times"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="hide" id="recordTemplate">
+    <div class="item clearfix" data-id="" data-username="">
+        <div class="left-avatar"></div>
+        <div class="right-info">
+            <div class="info-header">
+                <span class="user"></span> <span class="text-muted small">创建了一条 <span class="type"></span></span>
+            </div>
+            <div class="info-content"></div>
+            <div class="info-footer">
+                <span class="date"></span>
+                <a class="reply"><i class="fas fa-reply"></i> 回复</a>
+            </div>
+            <div class="child"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+    <script src="{% static 'app/plugin/editor-md/editormd.min.js' %}"></script>
+    <script src="{% static 'app/plugin/bootstrap-datetimepicker/js/bootstrap-datetimepicker.min.js' %}"></script>
+    <script src="{% static 'app/plugin/bootstrap-datetimepicker/js/locales/bootstrap-datetimepicker.zh-CN.js' %}"></script>
+    <script src="{% static 'app/plugin/bootstrap-select-1.13.18/js/bootstrap-select.min.js' %}"></script>
+    <script src="{% static 'app/plugin/bootstrap-select-1.13.18/js/i18n/defaults-zh_CN.min.js' %}"></script>
+    <script>
+        /**
+         * 问题详情页交互管理器
+         */
+        const IssueDetailManager = {
+            init: function() {
+                this.PluginManager.init();
+                this.RecordManager.init();
+                // this.FormChangeManager.init();
+            },
+
+            /**
+             * 第三方插件初始化管理器
+             */
+            PluginManager: {
+                editorInstance: null,
+                init: function() {
+                    this.initDatePicker();
+                    this.initEditorMd();
+                },
+                initDatePicker: function() {
+                    $('#id_start_date, #id_end_date').datetimepicker({
+                        format: 'yyyy-mm-dd',
+                        minView: "month",
+                        language: 'zh-CN',
+                        autoclose: true
+                    });
+                },
+                initEditorMd: function() {
+                    this.editorInstance = editormd('editor', {
+                        placeholder: "请输入问题描述...",
+                        height: 350,
+                        path: "{% static 'app/plugin/editor-md/lib/' %}",
+                        imageUpload: true,
+                        imageFormats: ["jpg", "jpeg", "png", "gif"],
+                        imageUploadURL: "{% url 'wiki_upload' project_id=request.tracer.project.id %}",
+                        toolbarAutoFixed: false,
+                        toolbarIcons: () => ["undo", "redo", "|", "bold", "italic", "quote", "|", "h1", "h2", "h3", "|", "list-ul", "list-ol", "|", "link", "image", "code", "|", "watch", "preview", "fullscreen"],
+                    });
+                }
+            },
+
+            /**
+             * 操作记录（评论）管理器
+             */
+            RecordManager: {
+                endpoint: "{% url 'issues_record' project_id=request.tracer.project.id issues_id=form.instance.id %}",
+                elements: {
+                    container: $('#commentList'),
+                    contentInput: $('#replyContent'),
+                    submitBtn: $('#btnSubmitReply'),
+                    replyUserTag: $('#replyUser'),
+                    template: $('#recordTemplate .item'),
+                },
+
+                init: function() {
+                    this.loadRecords();
+                    this.bindEvents();
+                },
+
+                bindEvents: function() {
+                    const self = this;
+                    self.elements.submitBtn.on('click', () => self.handleSubmit());
+                    self.elements.container.on('click', '.reply', function() {
+                        const $item = $(this).closest('.item');
+                        const id = $item.data('id');
+                        const username = $item.data('username');
+                        self.setReplyTo(id, username);
+                    });
+                    self.elements.replyUserTag.on('click', () => self.cancelReply());
+                },
+
+                loadRecords: function() {
+                    const self = this;
+                    $.ajax({
+                        url: self.endpoint,
+                        type: "GET",
+                        dataType: "json",
+                        success: (res) => {
+                            self.elements.container.empty();
+                            if (res.status && res.data.length > 0) {
+                                const recordMap = {};
+                                $.each(res.data, (index, item) => {
+                                    recordMap[item.id] = self.createRecordNode(item);
+                                });
+                                $.each(res.data, (index, item) => {
+                                    const $node = recordMap[item.id];
+                                    if (item.parent_id && recordMap[item.parent_id]) {
+                                        recordMap[item.parent_id].find('.child').append($node);
+                                    } else {
+                                        self.elements.container.append($node);
+                                    }
+                                });
+                            } else {
+                                self.elements.container.html('<p class="text-muted">暂无操作记录。</p>');
+                            }
+                        },
+                        error: () => {
+                            self.elements.container.html('<p class="text-danger">记录加载失败。</p>');
+                        }
+                    });
+                },
+
+                createRecordNode: function(nodeDict) {
+                    const $item = this.elements.template.clone();
+                    $item.attr({'data-id': nodeDict.id, 'data-username': nodeDict.creator});
+                    $item.find('.left-avatar').text(nodeDict.creator[0].toUpperCase());
+                    $item.find('.user').text(nodeDict.creator);
+                    $item.find('.type').text(nodeDict.reply_type_text);
+                    $item.find('.info-content').text(nodeDict.content);
+                    $item.find('.date').text(nodeDict.datetime);
+                    return $item;
+                },
+
+                handleSubmit: function() {
+                    const self = this;
+                    const content = self.elements.contentInput.val();
+                    const parentId = self.elements.replyUserTag.attr('parent-id');
+
+                    if (!content.trim()) {
+                        self.elements.contentInput.next('.error-msg').text('回复内容不能为空');
+                        return;
+                    }
+
+                    self.elements.contentInput.next('.error-msg').empty();
+                    const originalBtnText = self.elements.submitBtn.html();
+                    self.elements.submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+                    $.ajax({
+                        url: self.endpoint,
+                        type: 'POST',
+                        data: { content: content, reply: parentId },
+                        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+                        dataType: 'json',
+                        success: (res) => {
+                            if (res.status) {
+                                const $newNode = self.createRecordNode(res.data);
+                                if (res.data.parent_id) {
+                                    self.elements.container.find(`.item[data-id="${res.data.parent_id}"]`).find('.child').append($newNode);
+                                } else {
+                                    self.elements.container.append($newNode);
+                                }
+                                self.elements.contentInput.val('');
+                                self.cancelReply();
+                            } else {
+                                self.elements.contentInput.next('.error-msg').text(res.error.content[0]);
+                            }
+                        },
+                        error: () => alert('提交失败，请重试'),
+                        complete: () => self.elements.submitBtn.prop('disabled', false).html(originalBtnText)
+                    });
+                },
+
+                setReplyTo: function(id, username) {
+                    this.elements.replyUserTag.removeClass('hide').attr('parent-id', id).find('span').text(username);
+                    this.elements.contentInput.focus();
+                },
+
+                cancelReply: function() {
+                    this.elements.replyUserTag.addClass('hide').removeAttr('parent-id').find('span').text('');
+                }
+            }
+        };
+
+        $(document).ready(() => IssueDetailManager.init());
+    </script>
+{% endblock %}

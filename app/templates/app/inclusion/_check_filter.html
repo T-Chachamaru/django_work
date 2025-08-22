@@ -1,0 +1,10 @@
+<div class="item">
+    <div class="title">{{ title }}</div>
+    <div class="check-list">
+        {% for option in choices %}
+            <a href="{{ option.url }}" class="{% if option.active %}active{% endif %}">
+                {{ option.text }}
+            </a>
+        {% endfor %}
+    </div>
+</div>

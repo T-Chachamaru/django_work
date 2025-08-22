@@ -9,7 +9,6 @@
         }
         .panel-default .panel-heading {
             display: flex;
-            flex-direction: row;
             justify-content: space-between;
             align-items: center;
         }
@@ -20,6 +19,12 @@
             border-right: 1px solid #dddddd;
             min-height: 600px;
             padding: 15px 0;
+        }
+        .content {
+            border-left: 1px solid #dddddd;
+            min-height: 600px;
+            margin-left: -1px;
+            padding: 20px;
         }
         #catalog, #catalog ul {
             list-style: none;
@@ -38,8 +43,8 @@
             left: -15px;
             background-color: #ccc;
         }
-        #catalog li::before { top: 15px; width: 10px; height: 1px; }
-        #catalog li:not(:last-child)::after { top: 0; width: 1px; height: 100%; }
+        #catalog li::before { top: 15px; width: 10px; height: 1px; } /* 横线 */
+        #catalog li:not(:last-child)::after { top: 0; width: 1px; height: 100%; } /* 竖线 */
         #catalog a {
             display: block;
             padding: 6px 10px;
@@ -52,12 +57,6 @@
         #catalog a.active { background-color: #337ab7; color: #fff; font-weight: bold; }
         #catalog a i { margin-right: 8px; color: #999; }
         #catalog a.active i { color: #fff; }
-        .content {
-            border-left: 1px solid #dddddd;
-            min-height: 600px;
-            margin-left: -1px;
-            padding: 20px;
-        }
         .editormd-fullscreen {
             z-index: 1051;
         }
@@ -68,7 +67,14 @@
     <div class="container-fluid">
         <div class="panel panel-default">
             <div class="panel-heading">
-                <div><i class="fas fa-book"></i> wiki文档</div>
+                <div>
+                    <i class="fas fa-book"></i>
+                    {% if form.instance.id %}
+                        编辑Wiki
+                    {% else %}
+                        新建Wiki
+                    {% endif %}
+                </div>
                 <div class="function">
                     <a type="button" class="btn btn-default btn-xs"
                        href="{% url 'wiki' project_id=request.tracer.project.id %}">
@@ -78,29 +84,29 @@
             </div>
             <div class="panel-body">
                 <div class="col-sm-3 title-list">
-                    <ul id="catalog"></ul>
+                    <ul id="catalog">
+                        <li><i class="fas fa-spinner fa-spin"></i> 正在加载目录...</li>
+                    </ul>
                 </div>
                 <div class="col-sm-9 content">
                     <form method="post">
                         {% csrf_token %}
                         {% for field in form %}
-                            {% if field.name == "content" %}
-                                <div class="form-group">
-                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                    <div id="editor">
-                                        {{ field }}
-                                    </div>
-                                    <span class="error-msg" style="color: red;">{{ field.errors.0 }}</span>
-                                </div>
-                            {% else %}
-                                <div class="form-group">
-                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            <div class="form-group">
+                                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {% if field.name == "content" %}
+                                    <div id="editor">{{ field }}</div>
+                                {% else %}
                                     {{ field }}
-                                    <span class="error-msg" style="color: red;">{{ field.errors.0 }}</span>
-                                </div>
-                            {% endif %}
+                                {% endif %}
+                                {% if field.errors %}
+                                    <span class="error-msg">{{ field.errors.0 }}</span>
+                                {% endif %}
+                            </div>
                         {% endfor %}
-                        <button type="submit" class="btn btn-primary">提 交</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> 保 存
+                        </button>
                     </form>
                 </div>
             </div>
@@ -111,92 +117,120 @@
 {% block js %}
 <script src="{% static 'app/plugin/editor-md/editormd.min.js' %}"></script>
 <script>
-    $(function () {
-        initCatalog();
-        initEditorMd();
-    });
-
     /**
-     * 初始化 Editor.md 编辑器
+     * 将业务逻辑封装到一个对象中，避免全局变量污染，并使代码结构更清晰。
      */
-    function initEditorMd() {
-        editormd('editor', {
-            placeholder: "请输入内容",
-            height: 500,
-            path: "{% static 'app/plugin/editor-md/lib/' %}",
-            imageUpload: true,
-            imageFormats: ["jpg", "jpeg", "png", "gif"],
-            imageUploadURL: "{% url 'wiki_upload' project_id=request.tracer.project.id %}",
-        });
-    }
+    const WikiManager = {
+        endpoints: {
+            catalog: "{% url 'wiki_catalog' project_id=request.tracer.project.id %}",
+            upload: "{% url 'wiki_upload' project_id=request.tracer.project.id %}",
+            wikiBase: "{% url 'wiki' project_id=request.tracer.project.id %}",
+        },
+        elements: {
+            catalogContainer: $('#catalog'),
+        },
+        currentWikiId: "{{ form.instance.id|default:'' }}",
 
-    /**
-     * 通过AJAX从后端获取Wiki目录结构并渲染。
-     * 在编辑页面，目录仅用于展示结构和上下文，点击会跳转页面。
-     */
-    function initCatalog() {
-        $.ajax({
-            url: "{% url 'wiki_catalog' project_id=request.tracer.project.id %}",
-            type: "GET",
-            dataType: "json",
-            success: function (response) {
-                if (response.status) {
-                    renderCatalog(response.data);
-                    const currentWikiId = '{{ form.instance.id }}';
-                    if (currentWikiId) {
-                        setActiveCatalog(currentWikiId);
+        /**
+         * 初始化函数，页面加载后执行。
+         */
+        init: function () {
+            this.initEditorMd();
+            this.initCatalog();
+        },
+
+        /**
+         * 初始化 Editor.md 编辑器。
+         */
+        initEditorMd: function () {
+            editormd('editor', {
+                placeholder: "请输入内容...",
+                height: 500,
+                path: "{% static 'app/plugin/editor-md/lib/' %}",
+                imageUpload: true,
+                imageFormats: ["jpg", "jpeg", "png", "gif"],
+                imageUploadURL: this.endpoints.upload,
+            });
+        },
+
+        /**
+         * 通过AJAX从后端获取Wiki目录结构并触发渲染。
+         */
+        initCatalog: function () {
+            const self = this;
+
+            $.ajax({
+                url: self.endpoints.catalog,
+                type: "GET",
+                dataType: "json",
+                success: function (response) {
+                    if (response.status) {
+                        self.renderCatalog(response.data);
+                        if (self.currentWikiId) {
+                            self.setActiveCatalog(self.currentWikiId);
+                        }
+                    } else {
+                        self.elements.catalogContainer.html('<li><i class="fas fa-exclamation-circle"></i> 目录加载失败</li>');
                     }
-                } else {
-                    alert("初始化目录失败");
+                },
+                error: function () {
+                    self.elements.catalogContainer.html('<li><i class="fas fa-exclamation-circle"></i> 网络错误，无法加载目录</li>');
                 }
+            });
+        },
+
+        /**
+         * 渲染目录树。
+         * 这是一个高效的两步渲染算法：
+         * 1. 遍历数据，创建所有DOM元素并存入map。
+         * 2. 再次遍历数据，根据父子关系将DOM元素移动到正确的位置。
+         * @param {Array} catalogData - 从后端获取的目录数据列表。
+         */
+        renderCatalog: function (catalogData) {
+            const self = this;
+            self.elements.catalogContainer.empty();
+            const catalogMap = {};
+            $.each(catalogData, function (index, item) {
+                const linkUrl = `${self.endpoints.wikiBase}?wiki_id=${item.id}`;
+                const $link = $('<a>', { href: linkUrl, text: item.title })
+                    .prepend($('<i>', { class: 'fas fa-file-alt' }));
+                const $li = $('<li>', { id: `wiki-node-${item.id}` })
+                    .append($link)
+                    .append('<ul>');
+                catalogMap[item.id] = $li;
+            });
+
+            $.each(catalogData, function (index, item) {
+                const $li = catalogMap[item.id];
+                if (item.parent_id && catalogMap[item.parent_id]) {
+                    catalogMap[item.parent_id].children('ul').append($li);
+                } else {
+                    self.elements.catalogContainer.append($li);
+                }
+            });
+
+            $.each(catalogMap, function (id, $li) {
+                if ($li.children('ul').children('li').length > 0) {
+                    $li.children('a').find('i').removeClass('fa-file-alt').addClass('fa-folder');
+                }
+            });
+        },
+
+        /**
+         * 设置目录中的高亮（活动）项。
+         * @param {string} wikiId - 要高亮显示的文章ID。
+         */
+        setActiveCatalog: function (wikiId) {
+            this.elements.catalogContainer.find('a').removeClass('active');
+            const targetLi = $(`#wiki-node-${wikiId}`);
+            if (targetLi.length) {
+                targetLi.children('a').addClass('active');
             }
-        });
-    }
+        }
+    };
 
-    /**
-     * 渲染目录树。
-     * @param {Array} catalogData - 从后端获取的目录数据列表。
-     */
-    function renderCatalog(catalogData) {
-        const $catalog = $('#catalog');
-        $catalog.empty();
-        const catalogMap = {};
-
-        const wikiUrlTemplate = "{% url 'wiki' project_id=request.tracer.project.id %}";
-
-        $.each(catalogData, function (index, item) {
-            const $li = $('<li>').attr('id', "id_" + item.id);
-            const $icon = $('<i>').addClass('fas fa-file-alt');
-            const linkUrl = `${wikiUrlTemplate}?wiki_id=${item.id}`;
-            const $link = $('<a>').attr('href', linkUrl).text(item.title);
-            $link.prepend($icon);
-            $li.append($link).append('<ul>');
-            catalogMap[item.id] = $li;
-        });
-
-        $.each(catalogData, function (index, item) {
-            const $li = catalogMap[item.id];
-            if (item.parent_id && catalogMap[item.parent_id]) {
-                catalogMap[item.parent_id].children('ul').append($li);
-            } else {
-                $catalog.append($li);
-            }
-        });
-
-        $.each(catalogMap, function (id, $li) {
-            if ($li.children('ul').children('li').length > 0) {
-                $li.children('a').find('i').removeClass('fa-file-alt').addClass('fa-folder');
-            }
-        });
-    }
-
-    /**
-     * 设置目录中的高亮项。
-     * @param {string} wikiId - 要高亮显示的文章ID。
-     */
-    function setActiveCatalog(wikiId) {
-        $('#catalog a').removeClass('active');
-        $(`a[href*="wiki_id=${wikiId}"]`).addClass('active');
-    }
+    $(document).ready(function () {
+        WikiManager.init();
+    });
 </script>
 {% endblock %}

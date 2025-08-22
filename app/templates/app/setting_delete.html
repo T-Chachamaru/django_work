@@ -1,0 +1,116 @@
+{% extends 'app/layout/manage.html' %}
+{% load static %}
+
+{% block css %}
+    <style>
+        .choose {
+            border-left: 2px solid #f90 !important;
+        }
+        .error-msg {
+            color: #d9534f;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-sm-3">
+            <div class="panel panel-default">
+                <div class="panel-heading" style="background-color: transparent; font-weight: bold;">
+                    项目设置
+                </div>
+                <div class="list-group">
+                    <a href="{% url 'setting_delete' project_id=request.tracer.project.id %}"
+                       class="list-group-item choose">
+                        <i class="fas fa-trash"></i> 删除项目
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-9">
+            <div class="panel panel-danger">
+                <div class="panel-heading"><i class="fas fa-exclamation-triangle"></i> 删除项目</div>
+                <div class="panel-body" style="padding: 20px;">
+                    <div class="alert alert-danger" role="alert">
+                        <strong>警告：这是一个不可逆的操作！</strong>
+                        <p class="small" style="margin-top: 10px;">删除项目将会：</p>
+                        <ul>
+                            <li>永久删除与该项目相关的所有数据（问题、Wiki、文件记录等）。</li>
+                            <li>永久删除在云对象存储（COS）上对应的存储桶及其中的所有文件。</li>
+                        </ul>
+                        <p>请谨慎操作。</p>
+                    </div>
+
+                    <form class="form-horizontal" method="post" action="">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="id_project_name_input" class="col-sm-3 control-label">确认项目名称</label>
+                            <div class="col-sm-7">
+                                <p class="form-control-static">
+                                    请输入项目名称 <strong>{{ request.tracer.project.name }}</strong> 以确认删除：
+                                </p>
+                                <input type="text" class="form-control" id="id_project_name_input"
+                                       placeholder="在此输入项目名称" name="project_name" autocomplete="off">
+
+                                {% if error %}
+                                    <div class="error-msg">{{ error }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-sm-offset-3 col-sm-7">
+                                <input type="submit" class="btn btn-danger btn-block" id="confirm-delete-btn" value="确认删除，此操作无法撤销" disabled>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+    /**
+     * 删除确认模块
+     * - 通过监听输入框，只有当输入内容与项目名完全匹配时，才启用删除按钮。
+     * - 这是一种常见的防止误操作的安全机制。
+     */
+    const DeleteConfirmation = {
+        elements: {
+            input: $('#id_project_name_input'),
+            button: $('#confirm-delete-btn'),
+        },
+        correctName: "{{ request.tracer.project.name|escapejs }}",
+
+        init: function() {
+            this.bindEvents();
+        },
+
+        bindEvents: function() {
+            const self = this;
+            self.elements.input.on('input', function() {
+                self.checkInput();
+            });
+        },
+
+        checkInput: function() {
+            const inputValue = this.elements.input.val().trim();
+            if (inputValue === this.correctName) {
+                this.elements.button.prop('disabled', false);
+            } else {
+                this.elements.button.prop('disabled', true);
+            }
+        }
+    };
+
+    $(document).ready(function () {
+        DeleteConfirmation.init();
+    });
+</script>
+{% endblock %}
