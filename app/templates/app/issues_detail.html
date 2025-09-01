@@ -32,13 +32,16 @@
             cursor: pointer; font-size: 12px;
         }
         #replyUser i { margin-left: 8px; }
+        /* 修复EditorMD全屏遮挡问题 */
         .editormd-fullscreen { z-index: 1051; }
+        .form-horizontal .control-label { text-align: left; }
     </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid" style="padding: 20px 0;">
     <div class="row">
+        <!-- 左侧问题编辑区 -->
         <div class="col-sm-7">
             <div class="panel panel-default">
                 <div class="panel-heading"><i class="fas fa-edit"></i> 更新问题</div>
@@ -50,7 +53,7 @@
                             <label for="{{ form.desc.id_for_label }}" class="col-sm-2 control-label">{{ form.desc.label }}</label>
                             <div class="col-sm-10">
                                 <div id="editor">{{ form.desc }}</div>
-                                {% if form.desc.errors %}<span class="error-msg">{{ form.desc.errors.0 }}</span>{% endif %}
+                                <span class="error-msg text-danger">{% if form.desc.errors %}{{ form.desc.errors.0 }}{% endif %}</span>
                             </div>
                         </div>
                         <div class="row">
@@ -78,10 +81,11 @@
             </div>
         </div>
 
+        <!-- 右侧操作记录区 -->
         <div class="col-sm-5">
             <div class="panel panel-default">
                 <div class="panel-heading"><i class="fas fa-history"></i> 操作记录</div>
-                <div class="panel-body record-panel">
+                <div class="panel-body record-panel comment-area">
                     <div class="comment-list" id="commentList">
                         <p class="text-muted"><i class="fas fa-spinner fa-spin"></i> 正在加载操作记录...</p>
                     </div>
@@ -89,7 +93,7 @@
                     <div class="comment-text" id="commentText">
                         <div class="form-group">
                             <textarea id="replyContent" rows="4" class="form-control" placeholder="请输入回复内容..."></textarea>
-                            <span class="error-msg"></span>
+                            <span class="error-msg text-danger"></span>
                         </div>
                         <button class="btn btn-primary" type="button" id="btnSubmitReply">
                             <i class="fas fa-paper-plane"></i> 提 交
@@ -104,6 +108,7 @@
     </div>
 </div>
 
+<!-- 用于克隆生成新记录的HTML模板 -->
 <div class="hide" id="recordTemplate">
     <div class="item clearfix" data-id="" data-username="">
         <div class="left-avatar"></div>
@@ -128,15 +133,26 @@
     <script src="{% static 'app/plugin/bootstrap-datetimepicker/js/locales/bootstrap-datetimepicker.zh-CN.js' %}"></script>
     <script src="{% static 'app/plugin/bootstrap-select-1.13.18/js/bootstrap-select.min.js' %}"></script>
     <script src="{% static 'app/plugin/bootstrap-select-1.13.18/js/i18n/defaults-zh_CN.min.js' %}"></script>
+
     <script>
         /**
          * 问题详情页交互管理器
+         * 采用单例对象模式，将所有相关功能模块化。
          */
         const IssueDetailManager = {
             init: function() {
+                // 全局设置AJAX，自动发送CSRF token
+                $.ajaxSetup({
+                    beforeSend: function(xhr, settings) {
+                        if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                            xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
+                        }
+                    }
+                });
+
                 this.PluginManager.init();
                 this.RecordManager.init();
-                // this.FormChangeManager.init();
+                this.FormChangeManager.init();
             },
 
             /**
@@ -147,6 +163,8 @@
                 init: function() {
                     this.initDatePicker();
                     this.initEditorMd();
+                    // 初始化下拉选择框插件
+                    $('.selectpicker').selectpicker();
                 },
                 initDatePicker: function() {
                     $('#id_start_date, #id_end_date').datetimepicker({
@@ -165,16 +183,22 @@
                         imageFormats: ["jpg", "jpeg", "png", "gif"],
                         imageUploadURL: "{% url 'wiki_upload' project_id=request.tracer.project.id %}",
                         toolbarAutoFixed: false,
+                        watch: true, // 开启实时预览
+                        // 当编辑器内容改变时，触发自动保存
+                        onchange: function() {
+                            const content = this.getValue();
+                            IssueDetailManager.FormChangeManager.postChange('desc', content);
+                        },
                         toolbarIcons: () => ["undo", "redo", "|", "bold", "italic", "quote", "|", "h1", "h2", "h3", "|", "list-ul", "list-ol", "|", "link", "image", "code", "|", "watch", "preview", "fullscreen"],
                     });
                 }
             },
 
             /**
-             * 操作记录（评论）管理器
+             * 操作记录（评论/变更）管理器
              */
             RecordManager: {
-                endpoint: "{% url 'issues_record' project_id=request.tracer.project.id issues_id=form.instance.id %}",
+                endpoint: "{% url 'issues_record' project_id=request.tracer.project.id issues_id=issues_object.id %}",
                 elements: {
                     container: $('#commentList'),
                     contentInput: $('#replyContent'),
@@ -190,13 +214,16 @@
 
                 bindEvents: function() {
                     const self = this;
+                    // 绑定提交回复按钮
                     self.elements.submitBtn.on('click', () => self.handleSubmit());
+                    // 绑定回复链接点击事件 (事件委托)
                     self.elements.container.on('click', '.reply', function() {
                         const $item = $(this).closest('.item');
                         const id = $item.data('id');
                         const username = $item.data('username');
                         self.setReplyTo(id, username);
                     });
+                    // 绑定取消回复标签
                     self.elements.replyUserTag.on('click', () => self.cancelReply());
                 },
 
@@ -215,8 +242,8 @@
                                 });
                                 $.each(res.data, (index, item) => {
                                     const $node = recordMap[item.id];
-                                    if (item.parent_id && recordMap[item.parent_id]) {
-                                        recordMap[item.parent_id].find('.child').append($node);
+                                    if (item.reply_id && recordMap[item.reply_id]) {
+                                        recordMap[item.reply_id].find('.child').append($node);
                                     } else {
                                         self.elements.container.append($node);
                                     }
@@ -225,21 +252,29 @@
                                 self.elements.container.html('<p class="text-muted">暂无操作记录。</p>');
                             }
                         },
-                        error: () => {
-                            self.elements.container.html('<p class="text-danger">记录加载失败。</p>');
-                        }
+                        error: () => self.elements.container.html('<p class="text-danger">记录加载失败。</p>')
                     });
                 },
 
                 createRecordNode: function(nodeDict) {
                     const $item = this.elements.template.clone();
-                    $item.attr({'data-id': nodeDict.id, 'data-username': nodeDict.creator});
-                    $item.find('.left-avatar').text(nodeDict.creator[0].toUpperCase());
-                    $item.find('.user').text(nodeDict.creator);
-                    $item.find('.type').text(nodeDict.reply_type_text);
+                    $item.attr({'data-id': nodeDict.id, 'data-username': nodeDict.creator_name});
+                    $item.find('.left-avatar').text(nodeDict.creator_name[0].toUpperCase());
+                    $item.find('.user').text(nodeDict.creator_name);
+                    $item.find('.type').text(nodeDict.reply_type === 1 ? '更新' : '回复');
                     $item.find('.info-content').text(nodeDict.content);
-                    $item.find('.date').text(nodeDict.datetime);
+                    $item.find('.date').text(new Date(nodeDict.create_datetime).toLocaleString());
+
+                    // 如果是变更记录，则隐藏回复按钮
+                    if (nodeDict.reply_type === 1) {
+                        $item.find('.reply').hide();
+                    }
                     return $item;
+                },
+
+                appendRecordNode: function(nodeDict) {
+                    const $newNode = this.createRecordNode(nodeDict);
+                    this.elements.container.prepend($newNode);
                 },
 
                 handleSubmit: function() {
@@ -260,13 +295,12 @@
                         url: self.endpoint,
                         type: 'POST',
                         data: { content: content, reply: parentId },
-                        headers: {'X-CSRFToken': '{{ csrf_token }}'},
                         dataType: 'json',
                         success: (res) => {
                             if (res.status) {
                                 const $newNode = self.createRecordNode(res.data);
-                                if (res.data.parent_id) {
-                                    self.elements.container.find(`.item[data-id="${res.data.parent_id}"]`).find('.child').append($newNode);
+                                if (res.data.reply_id) {
+                                    self.elements.container.find(`.item[data-id="${res.data.reply_id}"]`).find('.child').append($newNode);
                                 } else {
                                     self.elements.container.append($newNode);
                                 }
@@ -289,9 +323,57 @@
                 cancelReply: function() {
                     this.elements.replyUserTag.addClass('hide').removeAttr('parent-id').find('span').text('');
                 }
+            },
+
+            /**
+             * 表单字段变更自动提交管理器
+             */
+            FormChangeManager: {
+                endpoint: "{% url 'issues_change' project_id=request.tracer.project.id issues_id=issues_object.id %}",
+
+                init: function() {
+                    const self = this;
+                    $('#editForm').find('input, select, textarea').on('change', function() {
+                        // 排除描述字段，因为它由EditorMD单独处理
+                        if ($(this).attr('name') === 'desc') return;
+
+                        const name = $(this).attr('name');
+                        const value = $(this).val();
+                        self.postChange(name, value);
+                    });
+                },
+
+                postChange: function(name, value) {
+                    const self = this;
+                    const postData = { name: name, value: value };
+
+                    // 清除旧的错误信息
+                    $(`[name="${name}"]`).closest('.form-group').find('.error-msg').text('');
+
+                    $.ajax({
+                        url: self.endpoint,
+                        type: "POST",
+                        contentType: "application/json; charset=UTF-8", // 必须指定ContentType
+                        data: JSON.stringify(postData),
+                        dataType: "json",
+                        success: (res) => {
+                            if (res.status) {
+                                // 成功后，将新的变更记录添加到操作历史中
+                                IssueDetailManager.RecordManager.appendRecordNode(res.data);
+                            } else {
+                                // 失败则显示错误信息
+                                $(`[name="${name}"]`).closest('.form-group').find('.error-msg').text(res.error);
+                            }
+                        },
+                        error: () => {
+                            $(`[name="${name}"]`).closest('.form-group').find('.error-msg').text('请求失败，请重试');
+                        }
+                    });
+                }
             }
         };
 
+        // 页面加载完成后，启动管理器
         $(document).ready(() => IssueDetailManager.init());
     </script>
 {% endblock %}

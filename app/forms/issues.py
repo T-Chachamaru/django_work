@@ -59,3 +59,19 @@ class IssuesReplyModelForm(BootStrapForm, forms.ModelForm):
     class Meta:
         model = models.IssuesReply
         fields = ['content', 'reply']
+
+
+class InviteModelForm(BootStrapForm, forms.ModelForm):
+    """
+    用于创建项目邀请码的ModelForm。
+
+    此表单允许项目创建者或管理员生成一个邀请链接，并可以设置链接的
+    有效期（period）和最大使用次数（count）。
+    """
+
+    class Meta:
+        # 指定该表单关联的模型
+        model = models.ProjectInvite
+
+        # 指定在表单中需要显示的字段
+        fields = ['period', 'count']

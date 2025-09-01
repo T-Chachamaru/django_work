@@ -1,0 +1,217 @@
+{% extends 'app/layout/basic.html' %}
+{% load static %}
+{% block title %} 确认订单 {% endblock %}
+
+{% block css %}
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .payment-container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 50px 15px;
+        min-height: calc(100vh - 56px);
+    }
+    .payment-card {
+        max-width: 600px;
+        width: 100%;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    .card-header {
+        padding: 20px 25px;
+        background-color: #f1f5f9;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .card-header h2 {
+        font-size: 24px;
+        margin: 0;
+        font-weight: 600;
+    }
+    .countdown-timer {
+        background-color: #fff3cd;
+        color: #856404;
+        padding: 10px 25px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+    }
+    .countdown-timer i {
+        margin-right: 10px;
+    }
+    .card-body {
+        padding: 25px;
+    }
+    .bill-details .detail-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 16px;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .bill-details .detail-item:last-child {
+        border-bottom: none;
+    }
+    .bill-details .item-label {
+        color: #6c757d;
+    }
+    .bill-details .item-value {
+        color: #212529;
+        font-weight: 500;
+    }
+    .bill-details .item-value.discount {
+        color: #28a745;
+    }
+    .info-icon {
+        cursor: help;
+        color: #007bff;
+        margin-left: 5px;
+    }
+    .divider {
+        margin: 20px 0;
+        border-top: 2px solid #e9ecef;
+    }
+    .total-price-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .total-price-section .total-label {
+        font-size: 18px;
+        font-weight: 600;
+        color: #343a40;
+    }
+    .total-price-section .total-amount {
+        font-size: 28px;
+        font-weight: bold;
+        color: #dc3545;
+    }
+    .card-footer {
+        padding: 25px;
+        background-color: #f8f9fa;
+        text-align: right;
+    }
+    .btn-pay {
+        padding: 12px 30px;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 5px;
+    }
+    .btn-pay .fa-spinner {
+        display: none;
+    }
+    .btn-pay.loading .btn-text {
+        display: none;
+    }
+    .btn-pay.loading .fa-spinner {
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="payment-container">
+    <div class="payment-card">
+        <div class="card-header">
+            <h2><i class="fas fa-file-invoice-dollar"></i> 确认订单</h2>
+        </div>
+
+        <div id="countdown" class="countdown-timer">
+            <i class="fas fa-clock"></i>
+            <span>订单将在 <strong id="timer">30:00</strong> 后失效，请尽快支付</span>
+        </div>
+
+        <div class="card-body">
+            <div class="bill-details">
+                <div class="detail-item">
+                    <span class="item-label">购买项目</span>
+                    <span class="item-value">{{ policy_object.title }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="item-label">套餐单价</span>
+                    <span class="item-value">￥{{ policy_object.price }} / 年</span>
+                </div>
+                <div class="detail-item">
+                    <span class="item-label">购买年限</span>
+                    <span class="item-value">{{ number }} 年</span>
+                </div>
+                <div class="detail-item">
+                    <span class="item-label">小计</span>
+                    <span class="item-value">￥{{ origin_price }}</span>
+                </div>
+                {% if balance > 0 %}
+                <div class="detail-item">
+                    <span class="item-label">
+                        旧套餐抵扣
+                        {% if transaction %}
+                        <i class="fas fa-info-circle info-icon"
+                           data-toggle="tooltip" data-placement="top"
+                           title="原订单 ({{ transaction.start_datetime|date:'Y-m-d' }} ~ {{ transaction.end_datetime|date:'Y-m-d' }}) 剩余价值抵扣">
+                        </i>
+                        {% endif %}
+                    </span>
+                    <span class="item-value discount">- ￥{{ balance }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="total-price-section">
+                <span class="total-label">应付总额</span>
+                <span class="total-amount">￥{{ total_price }}</span>
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <a id="payBtn" class="btn btn-primary btn-pay" href="{% url 'pay' %}">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span class="btn-text"><i class="fas fa-shield-alt"></i> 立即支付</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+$(document).ready(function () {
+    $('[data-toggle="tooltip"]').tooltip();
+
+    let totalSeconds = 1800;
+    const timerElement = $('#timer');
+    const countdownElement = $('#countdown');
+    const payBtn = $('#payBtn');
+
+    const interval = setInterval(function () {
+        totalSeconds--;
+
+        if (totalSeconds < 0) {
+            clearInterval(interval);
+            payBtn.addClass('disabled').attr('href', 'javascript:void(0);');
+            countdownElement.html('<i class="fas fa-exclamation-triangle"></i> 订单已过期，请 <a href="">刷新页面</a> 重新创建。').addClass('alert-danger');
+            return;
+        }
+
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        timerElement.text(
+            String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0')
+        );
+
+    }, 1000);
+
+    payBtn.on('click', function (e) {
+        if ($(this).hasClass('disabled')) {
+            e.preventDefault();
+            return;
+        }
+        $(this).addClass('loading');
+    });
+});
+</script>
+{% endblock %}

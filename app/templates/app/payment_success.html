@@ -1,0 +1,103 @@
+{% extends 'app/layout/basic.html' %}
+{% load static %}
+
+{% block title %}支付成功{% endblock %}
+
+{% block css %}
+<style>
+    .success-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 80px 15px;
+        background-color: #f8f9fa;
+    }
+    .success-card {
+        max-width: 500px;
+        width: 100%;
+        padding: 40px 30px;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+    .success-icon {
+        font-size: 60px;
+        color: #28a745;
+        margin-bottom: 20px;
+    }
+    .success-card h2 {
+        font-size: 28px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #333;
+    }
+    .success-card p {
+        font-size: 16px;
+        color: #6c757d;
+        margin-bottom: 30px;
+    }
+    .success-card .btn-primary {
+        padding: 12px 30px;
+        font-size: 18px;
+        font-weight: bold;
+        border-radius: 50px;
+        background-color: #007bff;
+        border-color: #007bff;
+        transition: background-color 0.2s;
+    }
+    .success-card .btn-primary:hover {
+        background-color: #0056b3;
+    }
+    .countdown-text {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #888;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="success-container">
+    <div class="success-card">
+        <!-- 成功图标 -->
+        <div class="success-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+
+        <!-- 成功信息 -->
+        <h2>支付成功！</h2>
+        <p>您的套餐已成功升级，感谢您的支持。</p>
+
+        <!-- 操作按钮 -->
+        <a href="{% url 'project_list' %}" class="btn btn-primary">
+            <i class="fas fa-arrow-left"></i> 返回我的项目
+        </a>
+
+        <!-- 自动跳转提示 -->
+        <div class="countdown-text">
+            将在 <span id="countdown">5</span> 秒后自动跳转...
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+    $(document).ready(function() {
+        let seconds = 5;
+        const countdownElement = $('#countdown');
+        const redirectUrl = "{% url 'project_list' %}";
+
+        const interval = setInterval(function() {
+            seconds--;
+            countdownElement.text(seconds);
+
+            if (seconds <= 0) {
+                clearInterval(interval);
+                window.location.href = redirectUrl;
+            }
+        }, 1000);
+    });
+</script>
+{% endblock %}

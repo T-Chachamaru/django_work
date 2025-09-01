@@ -1,0 +1,176 @@
+{% extends 'app/layout/basic.html' %}
+{% load static %}
+
+{% block title %} 套餐选择 {% endblock %}
+
+{% block css %}
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .container {
+        padding-top: 50px;
+        padding-bottom: 50px;
+    }
+    .slogan {
+        font-size: 36px;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 50px;
+        color: #343a40;
+    }
+    .pricing-card {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    .pricing-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+    .pricing-card .card-header {
+        padding: 25px;
+        background-color: #f1f5f9;
+        text-align: center;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .pricing-card .card-header h3 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+        color: #333;
+    }
+    .pricing-card .card-body {
+        padding: 30px 25px;
+        text-align: center;
+        flex-grow: 1;
+    }
+    .pricing-card .price {
+        font-size: 48px;
+        font-weight: bold;
+        color: #007bff;
+        margin-bottom: 25px;
+    }
+    .pricing-card .price .currency {
+        font-size: 24px;
+        vertical-align: super;
+        margin-right: 2px;
+    }
+    .pricing-card .price .period {
+        font-size: 16px;
+        color: #6c757d;
+        font-weight: 400;
+    }
+    .pricing-card .feature-list {
+        list-style: none;
+        padding: 0;
+        text-align: left;
+        font-size: 15px;
+    }
+    .pricing-card .feature-list li {
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+        color: #555;
+    }
+    .pricing-card .feature-list li:last-child {
+        border-bottom: none;
+    }
+    .pricing-card .feature-list li i {
+        color: #28a745;
+        margin-right: 12px;
+        width: 20px;
+        text-align: center;
+    }
+    .pricing-card .card-footer {
+        padding: 25px;
+        background-color: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+    }
+    .pricing-card .form-inline .form-group {
+        width: 100%;
+    }
+    .pricing-card .form-inline .input-group {
+        width: 100%;
+        display: flex;
+    }
+    .pricing-card .form-inline input[type="number"] {
+        text-align: center;
+        flex-grow: 1;
+    }
+    .pricing-card .btn-buy {
+        flex-shrink: 0;
+    }
+    .pricing-card.recommended {
+        border-width: 2px;
+        border-color: #007bff;
+        position: relative;
+    }
+    .badge-recommended {
+        position: absolute;
+        top: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #007bff;
+        color: white;
+        padding: 5px 15px;
+        border-radius: 50px;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="slogan">选择最适合您的方案</h1>
+    <div class="row">
+        {% for item in policy_list %}
+            <div class="col-md-4" style="margin-bottom: 30px;">
+                <div class="pricing-card {% if forloop.counter == 2 %}recommended{% endif %}">
+                    {% if forloop.counter == 2 %}
+                        <div class="badge-recommended">推荐</div>
+                    {% endif %}
+                    <div class="card-header">
+                        <h3>{{ item.title }}</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="price">
+                            <span class="currency">￥</span>{{ item.price }}<span class="period"> / 年</span>
+                        </div>
+                        <ul class="feature-list">
+                            <li><i class="fas fa-project-diagram"></i> 最大项目数量：{{ item.project_num }}</li>
+                            <li><i class="fas fa-hdd"></i> 单项目空间：{{ item.project_space }} GB</li>
+                            <li><i class="fas fa-file-alt"></i> 单文件大小：{{ item.per_file_size }} MB</li>
+                            <li><i class="fas fa-users"></i> 项目成员数：{{ item.project_members }}</li>
+                        </ul>
+                    </div>
+
+                    <div class="card-footer">
+                        <form class="form-inline" method="get" action="{% url 'payment' policy_id=item.id %}">
+                            <div class="form-group">
+                                <div class="input-group">
+                                    <span class="input-group-addon">购买</span>
+                                    <input type="number" name="number" value="1" min="1" class="form-control" placeholder="年限">
+                                    <span class="input-group-addon">年</span>
+                                    <div class="input-group-btn">
+                                        <button type="submit" class="btn btn-primary btn-buy">
+                                            <i class="fas fa-shopping-cart"></i> 立即购买
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

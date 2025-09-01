@@ -1,0 +1,72 @@
+{% extends 'app/layout/manage.html' %}
+
+{% block title %}加入项目{% endblock %}
+
+{% block css %}
+    <style>
+        .invite-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            padding: 20px;
+        }
+        .invite-panel {
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        .invite-panel .panel-body {
+            padding: 40px 20px;
+        }
+        .invite-panel .icon {
+            font-size: 50px;
+            margin-bottom: 20px;
+        }
+        .invite-panel h4 {
+            font-weight: bold;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .invite-panel p {
+            color: #666;
+            margin-bottom: 25px;
+        }
+        .invite-panel .btn {
+            min-width: 120px;
+            margin-top: 10px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="invite-container">
+        <!-- 根据是否存在error，显示不同的状态面板 -->
+        {% if error %}
+            <!-- 错误状态 -->
+            <div class="panel panel-default invite-panel">
+                <div class="panel-body">
+                    <i class="fas fa-times-circle icon text-danger"></i>
+                    <h4>操作失败</h4>
+                    <p>{{ error }}</p>
+                    <a href="javascript:history.back()" class="btn btn-default">返回上一页</a>
+                </div>
+            </div>
+        {% else %}
+            <!-- 成功状态 -->
+            <div class="panel panel-default invite-panel">
+                <div class="panel-body">
+                    <i class="fas fa-check-circle icon text-success"></i>
+                    <h4>加入成功！</h4>
+                    <p>欢迎加入项目 “{{ invite_object.project.name }}”</p>
+                    <a href="{% url 'dashboard' project_id=invite_object.project.id %}" class="btn btn-success">
+                        <i class="fas fa-arrow-right"></i>  立即跳转
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

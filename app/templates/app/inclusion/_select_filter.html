@@ -1,0 +1,13 @@
+<div class="form-group">
+    <label for="select-{{ param_name }}" class="control-label">{{ title }}</label>
+    <div style="width: 180px;">
+        <select id="select-{{ param_name }}" name="{{ param_name }}" class="selectpicker" data-live-search="true" data-width="100%">
+            <option value="">全部</option>
+            {% for option in options %}
+                <option value="{{ option.value }}" {% if option.selected %}selected{% endif %}>
+                    {{ option.text }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+</div>

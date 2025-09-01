@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os.path
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -105,13 +105,13 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'zh-hans'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Shanghai'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
@@ -167,7 +167,16 @@ WHITE_REGEX_URL_LIST = [
     "/image/code/",
     "/login/sms/",
     "/index/",
+    "/price/"
 ]
+
+# 支付宝配置
+ALI_APPID = "2016102400754054"
+ALI_GATEWAY = "https://openapi.alipaydev.com/gateway.do"
+ALI_PRI_KEY_PATH = os.path.join(BASE_DIR, 'files/应用私钥.txt')
+ALI_PUB_KEY_PATH = os.path.join(BASE_DIR, 'files/支付宝公钥.txt')
+ALI_NOTIFY_URL = "http://127.0.0.1:8001/pay/notify/"
+ALI_RETURN_URL = "http://127.0.0.1:8001/payment/success/"
 
 try:
     from .local_settings import *
